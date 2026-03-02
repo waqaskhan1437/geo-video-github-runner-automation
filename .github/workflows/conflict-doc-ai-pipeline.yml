@@ -1,0 +1,141 @@
+name: Conflict Documentary AI Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      narration_file:
+        description: "Narration script text file path inside repo"
+        required: false
+        default: "data/narration_script.txt"
+      voice_name:
+        description: "Edge TTS voice name"
+        required: false
+        default: "en-US-GuyNeural"
+      voice_rate:
+        description: "Voice speed"
+        required: false
+        default: "-18%"
+      voice_pitch:
+        description: "Voice pitch"
+        required: false
+        default: "+0Hz"
+      target_seconds:
+        description: "Final duration in seconds"
+        required: false
+        default: "120"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conflict-doc-ai-pipeline
+  cancel-in-progress: false
+
+jobs:
+  render-refine-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg curl
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ensure world map data
+        run: |
+          mkdir -p data
+          if [ ! -f data/world.geojson ]; then
+            curl -fsSL "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json" -o data/world.geojson
+          fi
+
+      - name: Pass 1 visual render
+        env:
+          DOC_VISUAL_OUTPUT: outputs/final/conflict_visual_pass1.mp4
+          DOC_SECONDS: ${{ inputs.target_seconds || '120' }}
+          DOC_MAP_BRIGHTNESS: "1.00"
+          DOC_TEXT_ALPHA_SCALE: "1.00"
+          DOC_ROUTE_GLOW_SCALE: "1.00"
+          DOC_ROUTE_CORE_SCALE: "1.00"
+          DOC_ROUTE_DENSITY_SCALE: "1.00"
+        run: python scripts/render_conflict_documentary.py
+
+      - name: Pass 1 voice + audio mix
+        env:
+          DOC_VISUAL_INPUT: outputs/final/conflict_visual_pass1.mp4
+          DOC_FINAL_OUTPUT: outputs/final/conflict_pass1.mp4
+          DOC_NARRATION_FILE: ${{ inputs.narration_file || 'data/narration_script.txt' }}
+          DOC_TARGET_SECONDS: ${{ inputs.target_seconds || '120' }}
+          DOC_VOICE_NAME: ${{ inputs.voice_name || 'en-US-GuyNeural' }}
+          DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
+          DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
+          DOC_VOICE_GAIN: "1.00"
+          DOC_MUSIC_GAIN: "0.30"
+        run: python scripts/build_conflict_audio_and_mux.py
+
+      - name: Pass 1 quality test (informational)
+        continue-on-error: true
+        run: |
+          python scripts/test_video_output.py \
+            --video outputs/final/conflict_pass1.mp4 \
+            --report outputs/final/test_pass1.json
+
+      - name: AI analysis and refinement suggestions
+        run: |
+          python scripts/ai_video_analyzer_refiner.py \
+            --video outputs/final/conflict_pass1.mp4 \
+            --report outputs/final/analysis_pass1.json \
+            --env-output outputs/final/refine.env
+
+      - name: Refined visual render (AI tuned)
+        env:
+          DOC_VISUAL_OUTPUT: outputs/final/conflict_visual_final.mp4
+          DOC_SECONDS: ${{ inputs.target_seconds || '120' }}
+        run: |
+          set -a
+          source outputs/final/refine.env
+          set +a
+          python scripts/render_conflict_documentary.py
+
+      - name: Refined voice + audio mix (AI tuned)
+        env:
+          DOC_VISUAL_INPUT: outputs/final/conflict_visual_final.mp4
+          DOC_FINAL_OUTPUT: outputs/final/conflict_final_ai_refined.mp4
+          DOC_NARRATION_FILE: ${{ inputs.narration_file || 'data/narration_script.txt' }}
+          DOC_TARGET_SECONDS: ${{ inputs.target_seconds || '120' }}
+          DOC_VOICE_NAME: ${{ inputs.voice_name || 'en-US-GuyNeural' }}
+          DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
+          DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
+        run: |
+          set -a
+          source outputs/final/refine.env
+          set +a
+          python scripts/build_conflict_audio_and_mux.py
+
+      - name: Final strict quality test
+        run: |
+          python scripts/test_video_output.py \
+            --video outputs/final/conflict_final_ai_refined.mp4 \
+            --report outputs/final/test_final.json \
+            --strict
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: conflict-doc-ai-${{ github.run_id }}-${{ github.run_attempt }}
+          path: outputs/final
+          if-no-files-found: error
+          retention-days: 14
+

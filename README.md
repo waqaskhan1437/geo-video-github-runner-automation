@@ -47,3 +47,33 @@ requirements.txt
 - Script world map polygons ke liye open-source GeoJSON fetch karti hai.
 - Agar map download fail ho to video phir bhi grid background ke sath ban jati hai.
 
+## AI Refine Workflow (Render -> Analyze -> Refine -> Test)
+
+New workflow: `.github/workflows/conflict-doc-ai-pipeline.yml`
+
+Yeh workflow runner par poora pipeline chalata hai:
+
+1. Pass 1 render + realistic AI voiceover (`edge-tts`)
+2. Video quality analysis (loudness, brightness, contrast, codec checks)
+3. AI-style heuristic refinement suggestions (`refine.env`)
+4. Refined render + refined audio mix
+5. Final strict tests
+6. Final artifact upload
+
+Main scripts:
+
+```text
+scripts/render_conflict_documentary.py
+scripts/build_conflict_audio_and_mux.py
+scripts/ai_video_analyzer_refiner.py
+scripts/test_video_output.py
+scripts/video_quality_utils.py
+data/narration_script.txt
+```
+
+Run steps:
+
+1. `Actions` tab me `Conflict Documentary AI Pipeline` select karo.
+2. `Run workflow` karo.
+3. Inputs me narration file / voice set kar sakte ho.
+4. Completion par `conflict-doc-ai-*` artifact download kar lo.
