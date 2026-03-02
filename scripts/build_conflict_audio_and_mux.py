@@ -19,6 +19,7 @@ import os
 import subprocess
 from pathlib import Path
 
+from gtts import gTTS
 
 def env_float(name: str, default: float, minimum: float, maximum: float) -> float:
     raw = os.getenv(name, str(default)).strip()
@@ -87,9 +88,12 @@ NARRATION_TEXT = Path(env_str("DOC_NARRATION_FILE", "data/narration_script.txt")
 VOICE_NAME = env_str("DOC_VOICE_NAME", "en-US-GuyNeural")
 VOICE_RATE = env_str("DOC_VOICE_RATE", "-20%")
 VOICE_PITCH = env_str("DOC_VOICE_PITCH", "+0Hz")
+VOICE_ENGINE = env_str("DOC_VOICE_ENGINE", "auto").lower()
 VOICE_GAIN = env_float("DOC_VOICE_GAIN", 1.0, 0.70, 1.50)
 MUSIC_GAIN = env_float("DOC_MUSIC_GAIN", 0.30, 0.10, 0.60)
 AUDIO_BITRATE = env_int("DOC_AUDIO_BITRATE", 192, 96, 320)
+GTTS_LANG = env_str("DOC_GTTS_LANG", "en")
+GTTS_TLD = env_str("DOC_GTTS_TLD", "com")
 
 work_root = FINAL_VIDEO.parent / f"audio_{FINAL_VIDEO.stem}"
 work_root.mkdir(parents=True, exist_ok=True)
@@ -99,9 +103,7 @@ MUSIC_BED = work_root / "music_bed.wav"
 MIXED_AUDIO = work_root / "mixed_audio.wav"
 
 
-def generate_voice() -> None:
-    if not NARRATION_TEXT.exists():
-        raise FileNotFoundError(f"Narration text file not found: {NARRATION_TEXT}")
+def run_edge_tts() -> None:
     run(
         [
             "python",
@@ -117,6 +119,38 @@ def generate_voice() -> None:
             str(RAW_VOICE),
         ]
     )
+
+
+def run_gtts() -> None:
+    text = NARRATION_TEXT.read_text(encoding="utf-8")
+    if not text.strip():
+        raise ValueError(f"Narration text file is empty: {NARRATION_TEXT}")
+    tts = gTTS(text=text, lang=GTTS_LANG, tld=GTTS_TLD)
+    tts.save(str(RAW_VOICE))
+
+
+def generate_voice() -> None:
+    if not NARRATION_TEXT.exists():
+        raise FileNotFoundError(f"Narration text file not found: {NARRATION_TEXT}")
+
+    selected_engine = VOICE_ENGINE
+    if selected_engine not in {"auto", "edge", "gtts"}:
+        selected_engine = "auto"
+
+    if selected_engine == "edge":
+        print("[voice] engine=edge")
+        run_edge_tts()
+    elif selected_engine == "gtts":
+        print("[voice] engine=gtts")
+        run_gtts()
+    else:
+        # Auto: prefer edge-tts first, fallback to gTTS if blocked.
+        try:
+            print("[voice] engine=auto (trying edge-tts)")
+            run_edge_tts()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[voice] edge-tts failed, falling back to gTTS: {exc}")
+            run_gtts()
 
     raw_dur = media_duration(RAW_VOICE)
     speed_factor = raw_dur / TARGET_SECONDS if TARGET_SECONDS > 0 else 1.0
@@ -229,4 +263,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

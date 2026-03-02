@@ -81,6 +81,7 @@ jobs:
           DOC_VOICE_NAME: ${{ inputs.voice_name || 'en-US-GuyNeural' }}
           DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
           DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
+          DOC_VOICE_ENGINE: "auto"
           DOC_VOICE_GAIN: "1.00"
           DOC_MUSIC_GAIN: "0.30"
         run: python scripts/build_conflict_audio_and_mux.py
@@ -118,6 +119,7 @@ jobs:
           DOC_VOICE_NAME: ${{ inputs.voice_name || 'en-US-GuyNeural' }}
           DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
           DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
+          DOC_VOICE_ENGINE: "auto"
         run: |
           set -a
           source outputs/final/refine.env
@@ -138,4 +140,3 @@ jobs:
           path: outputs/final
           if-no-files-found: error
           retention-days: 14
-

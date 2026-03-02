@@ -60,6 +60,11 @@ Yeh workflow runner par poora pipeline chalata hai:
 5. Final strict tests
 6. Final artifact upload
 
+Voice generation fallback:
+
+- Primary: `edge-tts`
+- Auto fallback: `gTTS` (agar edge endpoint block ho jaye)
+
 Main scripts:
 
 ```text
