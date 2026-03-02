@@ -8,7 +8,14 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from video_quality_utils import measure_loudness, probe_video, sample_frame_luma, summarize_metrics
+from video_quality_utils import (
+    measure_loudness,
+    probe_video,
+    sample_frame_luma,
+    sample_motion_energy,
+    sample_warm_ratio,
+    summarize_metrics,
+)
 
 
 def validate(metrics: Dict[str, float], strict: bool) -> List[str]:
@@ -23,6 +30,8 @@ def validate(metrics: Dict[str, float], strict: bool) -> List[str]:
     loudness_lra = metrics.get("input_lra", 99.0)
     mean_luma = metrics.get("mean_luma", 0.0)
     std_luma = metrics.get("std_luma", 0.0)
+    motion_mean = metrics.get("motion_mean", 0.0)
+    warm_ratio = metrics.get("warm_ratio", 0.0)
     has_audio = metrics.get("has_audio", 0.0) >= 1.0
 
     dur_lo = 119.4 if strict else 118.5
@@ -55,6 +64,10 @@ def validate(metrics: Dict[str, float], strict: bool) -> List[str]:
         issues.append(f"Average luma unusual: {mean_luma:.3f}")
     if std_luma < 4:
         issues.append(f"Visual contrast too low (std_luma): {std_luma:.3f}")
+    if motion_mean < (3.2 if strict else 2.4):
+        issues.append(f"Motion intensity too low: {motion_mean:.3f}")
+    if warm_ratio < (0.004 if strict else 0.003):
+        issues.append(f"Impact highlight ratio too low: {warm_ratio:.3f}")
 
     return issues
 
@@ -73,7 +86,9 @@ def main() -> int:
     probe = probe_video(video_path)
     loudness = measure_loudness(video_path)
     luma = sample_frame_luma(video_path, every_seconds=10, max_frames=18)
-    metrics = summarize_metrics(probe, loudness, luma)
+    motion = sample_motion_energy(video_path, fps=1.2, max_frames=120)
+    warmth = sample_warm_ratio(video_path, every_seconds=6, max_frames=24)
+    metrics = summarize_metrics(probe, loudness, luma, motion=motion, warmth=warmth)
     issues = validate(metrics, strict=args.strict)
 
     report = {

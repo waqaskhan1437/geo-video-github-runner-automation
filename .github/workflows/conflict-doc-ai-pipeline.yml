@@ -69,7 +69,15 @@ jobs:
           DOC_TEXT_ALPHA_SCALE: "1.00"
           DOC_ROUTE_GLOW_SCALE: "1.00"
           DOC_ROUTE_CORE_SCALE: "1.00"
-          DOC_ROUTE_DENSITY_SCALE: "1.00"
+          DOC_ROUTE_DENSITY_SCALE: "1.10"
+          DOC_MISSILE_DENSITY_SCALE: "1.18"
+          DOC_IMPACT_RING_SCALE: "1.20"
+          DOC_TARGET_CIRCLE_SCALE: "1.16"
+          DOC_SHAKE_SCALE: "1.12"
+          DOC_BOMBER_COUNT_SCALE: "1.10"
+          DOC_SMOKE_ALPHA_SCALE: "1.00"
+          DOC_EXPLOSION_ALPHA_SCALE: "1.12"
+          DOC_GRAIN_ALPHA: "30"
         run: python scripts/render_conflict_documentary.py
 
       - name: Pass 1 voice + audio mix
@@ -82,8 +90,11 @@ jobs:
           DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
           DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
           DOC_VOICE_ENGINE: "auto"
+          DOC_VOICE_STYLE: "energetic"
+          DOC_VOICE_ENERGY: "1.20"
           DOC_VOICE_GAIN: "1.00"
-          DOC_MUSIC_GAIN: "0.30"
+          DOC_MUSIC_GAIN: "0.32"
+          DOC_SFX_GAIN: "0.24"
         run: python scripts/build_conflict_audio_and_mux.py
 
       - name: Pass 1 quality test (informational)
@@ -120,6 +131,7 @@ jobs:
           DOC_VOICE_RATE: ${{ inputs.voice_rate || '-18%' }}
           DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
           DOC_VOICE_ENGINE: "auto"
+          DOC_VOICE_STYLE: "energetic"
         run: |
           set -a
           source outputs/final/refine.env

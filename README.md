@@ -1,69 +1,42 @@
 # Geo Video GitHub Runner Automation
 
-Yeh repo ek standalone automation deta hai jo GitHub-hosted runner par:
+Yeh repo GitHub runners par documentary-style geo mapping videos automate karta hai.
 
-1. Environment setup karta hai
-2. `ffmpeg` + Python dependencies install karta hai
-3. Lat/Lon route points se geo-mapping MP4 video banata hai
-4. Final video ko GitHub Actions artifact ke taur par upload karta hai
-
-## Files
+## Core Workflows
 
 ```text
 .github/workflows/geo-video-automation.yml
+.github/workflows/conflict-doc-ai-pipeline.yml
+.github/workflows/gpu-ai-stack-self-hosted.yml
+```
+
+## Basic Geo Mapping Automation
+
+Files:
+
+```text
 scripts/geo_video_automation.py
 data/route_points.sample.json
-requirements.txt
 ```
 
-## Route Points Format
+Run:
+1. `Actions` tab me `Geo Mapping Video Automation` choose karo.
+2. `Run workflow` karo.
+3. `points_file` ya `points_json` input do.
+4. Artifact download karo.
 
-`data/route_points.sample.json` ya custom JSON input ka format:
+## AI Refine Pipeline (Render -> Analyze -> Refine -> Test)
 
-```json
-{
-  "points": [
-    { "name": "Karachi", "lat": 24.8607, "lon": 67.0011 },
-    { "name": "Dubai", "lat": 25.2048, "lon": 55.2708 }
-  ]
-}
-```
+Workflow: `.github/workflows/conflict-doc-ai-pipeline.yml`
 
-## Run Automation
-
-1. Repo ko GitHub par push karo.
-2. `Actions` tab kholo.
-3. `Geo Mapping Video Automation` workflow select karo.
-4. `Run workflow` pe click karo.
-5. Optional inputs do:
-   - `points_file` (repo ke andar JSON path)
-   - `points_json` (raw JSON; yeh `points_file` ko override karta hai)
-   - `title`, `output_name`, `width`, `height`, `fps`, `duration_seconds`
-6. Run complete hone ke baad artifact download karo.
-
-## Notes
-
-- Workflow `ubuntu-latest` GitHub-hosted runner use karta hai (fresh instance per run).
-- Script world map polygons ke liye open-source GeoJSON fetch karti hai.
-- Agar map download fail ho to video phir bhi grid background ke sath ban jati hai.
-
-## AI Refine Workflow (Render -> Analyze -> Refine -> Test)
-
-New workflow: `.github/workflows/conflict-doc-ai-pipeline.yml`
-
-Yeh workflow runner par poora pipeline chalata hai:
-
-1. Pass 1 render + realistic AI voiceover (`edge-tts`)
-2. Video quality analysis (loudness, brightness, contrast, codec checks)
-3. AI-style heuristic refinement suggestions (`refine.env`)
-4. Refined render + refined audio mix
-5. Final strict tests
-6. Final artifact upload
-
-Voice generation fallback:
-
-- Primary: `edge-tts`
-- Auto fallback: `gTTS` (agar edge endpoint block ho jaye)
+Pipeline:
+1. Pass 1 cinematic map render.
+2. Pass 1 energetic voiceover + score + impact SFX.
+3. Quality analysis (luma, contrast, loudness, motion, warm-impact ratio).
+4. AI heuristic refine suggestions (`refine.env`).
+5. Refined render + refined audio mix.
+6. Strict final test.
+7. Artifact upload.
 
 Main scripts:
 
@@ -76,9 +49,54 @@ scripts/video_quality_utils.py
 data/narration_script.txt
 ```
 
-Run steps:
+Voice engines:
+- Primary: `edge-tts`
+- Fallback: `gTTS`
 
-1. `Actions` tab me `Conflict Documentary AI Pipeline` select karo.
-2. `Run workflow` karo.
-3. Inputs me narration file / voice set kar sakte ho.
-4. Completion par `conflict-doc-ai-*` artifact download kar lo.
+### Visual tuning env vars
+- `DOC_MISSILE_DENSITY_SCALE`
+- `DOC_IMPACT_RING_SCALE`
+- `DOC_TARGET_CIRCLE_SCALE`
+- `DOC_SHAKE_SCALE`
+- `DOC_BOMBER_COUNT_SCALE`
+- `DOC_SMOKE_ALPHA_SCALE`
+- `DOC_EXPLOSION_ALPHA_SCALE`
+- `DOC_GRAIN_ALPHA`
+
+### Audio tuning env vars
+- `DOC_VOICE_STYLE` (`energetic` / `neutral`)
+- `DOC_VOICE_ENERGY`
+- `DOC_VOICE_VARIATION`
+- `DOC_MUSIC_GAIN`
+- `DOC_SFX_GAIN`
+- `DOC_IMPACT_TIMES`
+
+## Optional GPU AI Stack (Self-Hosted Runner)
+
+Workflow: `.github/workflows/gpu-ai-stack-self-hosted.yml`
+
+Purpose:
+- Self-hosted GPU runner par ComfyUI stack install karna.
+- ComfyUI Manager + VideoHelperSuite install karna.
+- Optional open-source editor stack install karna (`moviepy`, `opencv-python-headless`).
+
+Setup script:
+
+```text
+scripts/setup_gpu_ai_stack.sh
+```
+
+Required labels:
+- `self-hosted`
+- `linux`
+- `x64`
+- `gpu`
+
+## Research
+
+Forums + GitHub stack research:
+
+```text
+docs/ai_stack_research.md
+```
+

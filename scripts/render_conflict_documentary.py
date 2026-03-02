@@ -10,6 +10,9 @@ Main env vars:
 - DOC_ROUTE_GLOW_SCALE (default: 1.0)
 - DOC_ROUTE_CORE_SCALE (default: 1.0)
 - DOC_ROUTE_DENSITY_SCALE (default: 1.0)
+- DOC_MISSILE_DENSITY_SCALE / DOC_IMPACT_RING_SCALE / DOC_TARGET_CIRCLE_SCALE
+- DOC_SHAKE_SCALE / DOC_BOMBER_COUNT_SCALE
+- DOC_SMOKE_ALPHA_SCALE / DOC_EXPLOSION_ALPHA_SCALE / DOC_GRAIN_ALPHA
 - DOC_RENDER_CRF (default: 20)
 - DOC_RENDER_PRESET (default: medium)
 """
@@ -25,7 +28,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 
 def env_int(name: str, default: int, minimum: int, maximum: int) -> int:
@@ -65,6 +68,14 @@ TEXT_ALPHA_SCALE = env_float("DOC_TEXT_ALPHA_SCALE", 1.0, 0.70, 1.40)
 ROUTE_GLOW_SCALE = env_float("DOC_ROUTE_GLOW_SCALE", 1.0, 0.60, 1.60)
 ROUTE_CORE_SCALE = env_float("DOC_ROUTE_CORE_SCALE", 1.0, 0.60, 1.60)
 ROUTE_DENSITY_SCALE = env_float("DOC_ROUTE_DENSITY_SCALE", 1.0, 0.70, 1.80)
+MISSILE_DENSITY_SCALE = env_float("DOC_MISSILE_DENSITY_SCALE", 1.0, 0.70, 2.40)
+IMPACT_RING_SCALE = env_float("DOC_IMPACT_RING_SCALE", 1.0, 0.60, 2.40)
+TARGET_CIRCLE_SCALE = env_float("DOC_TARGET_CIRCLE_SCALE", 1.0, 0.70, 1.90)
+SHAKE_SCALE = env_float("DOC_SHAKE_SCALE", 1.0, 0.00, 2.30)
+BOMBER_COUNT_SCALE = env_float("DOC_BOMBER_COUNT_SCALE", 1.0, 0.00, 2.50)
+SMOKE_ALPHA_SCALE = env_float("DOC_SMOKE_ALPHA_SCALE", 1.0, 0.50, 2.20)
+EXPLOSION_ALPHA_SCALE = env_float("DOC_EXPLOSION_ALPHA_SCALE", 1.0, 0.60, 2.20)
+GRAIN_ALPHA = env_int("DOC_GRAIN_ALPHA", 28, 0, 95)
 VIGNETTE_ALPHA = env_int("DOC_VIGNETTE_ALPHA", 120, 40, 220)
 RENDER_CRF = env_int("DOC_RENDER_CRF", 20, 16, 28)
 RENDER_PRESET = env_str("DOC_RENDER_PRESET", "medium")
@@ -101,6 +112,23 @@ class RouteSpec:
     count_hint: int
     color: Tuple[int, int, int]
     spread: float = 0.35
+
+
+@dataclass(frozen=True)
+class ImpactSpec:
+    hotspot: str
+    start_progress: float
+    strength: float
+
+
+@dataclass(frozen=True)
+class BomberPass:
+    start_progress: float
+    duration: float
+    y_norm: float
+    direction: int
+    size: float
+    trail_alpha: float
 
 
 @dataclass(frozen=True)
@@ -219,9 +247,52 @@ SCENES: List[Scene] = [
     ),
 ]
 
+SCENE_IMPACTS: Dict[str, Tuple[ImpactSpec, ...]] = {
+    "Scene 1": (
+        ImpactSpec("Nevatim Air Base", 0.44, 1.00),
+        ImpactSpec("Ramon Air Base", 0.62, 1.05),
+        ImpactSpec("Tel Aviv", 0.81, 0.82),
+    ),
+    "Scene 2": (
+        ImpactSpec("Nevatim Air Base", 0.40, 0.92),
+        ImpactSpec("Negev", 0.58, 0.75),
+        ImpactSpec("Ramon Air Base", 0.74, 1.10),
+    ),
+    "Scene 3": (
+        ImpactSpec("Nevatim Air Base", 0.36, 1.00),
+        ImpactSpec("Tel Nof Air Base", 0.57, 1.20),
+        ImpactSpec("Nevatim Air Base", 0.83, 0.84),
+    ),
+    "Scene 4": (
+        ImpactSpec("Dimona", 0.33, 1.08),
+        ImpactSpec("Tel Aviv", 0.52, 1.18),
+        ImpactSpec("Tel Aviv", 0.73, 0.92),
+    ),
+    "Scene 5": (
+        ImpactSpec("Jordan Corridor", 0.34, 0.84),
+        ImpactSpec("Mediterranean Zone", 0.56, 0.95),
+        ImpactSpec("Tel Aviv", 0.78, 1.02),
+    ),
+    "Scene 6": (
+        ImpactSpec("Nevatim Air Base", 0.28, 0.85),
+        ImpactSpec("Ramon Air Base", 0.42, 0.82),
+        ImpactSpec("Tel Nof Air Base", 0.56, 0.94),
+        ImpactSpec("Dimona", 0.70, 0.93),
+        ImpactSpec("Tel Aviv", 0.84, 1.03),
+    ),
+}
+
 
 def clamp(value: float, low: float, high: float) -> float:
     return low if value < low else high if value > high else value
+
+
+def clamp_int(value: int, low: int, high: int) -> int:
+    if value < low:
+        return low
+    if value > high:
+        return high
+    return value
 
 
 def smoothstep(t: float) -> float:
@@ -340,10 +411,16 @@ def build_base_map() -> Image.Image:
         blue = scale_channel(min(255, brightness + 20), MAP_BRIGHTNESS)
         image.putpixel((x, y), (brightness, brightness, blue, 255))
 
+    image = image.filter(ImageFilter.GaussianBlur(radius=0.45))
     return image
 
 
-def crop_world_to_frame(world_map: Image.Image, bbox: Tuple[float, float, float, float]) -> Image.Image:
+def crop_world_to_frame(
+    world_map: Image.Image,
+    bbox: Tuple[float, float, float, float],
+    impact_energy: float,
+    seconds: float,
+) -> Image.Image:
     lon_min, lat_min, lon_max, lat_max = bbox
     wx, wy = world_map.size
     x1 = int(clamp((lon_min + 180.0) / 360.0 * wx, 0, wx - 1))
@@ -351,7 +428,18 @@ def crop_world_to_frame(world_map: Image.Image, bbox: Tuple[float, float, float,
     y1 = int(clamp((90.0 - lat_max) / 180.0 * wy, 0, wy - 1))
     y2 = int(clamp((90.0 - lat_min) / 180.0 * wy, y1 + 1, wy))
     crop = world_map.crop((x1, y1, x2, y2))
-    return crop.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
+
+    overscan = max(16, int(28 * SHAKE_SCALE))
+    enlarged = crop.resize((WIDTH + (overscan * 2), HEIGHT + (overscan * 2)), Image.Resampling.LANCZOS)
+    shake_px = int(clamp(impact_energy * 4.6 * SHAKE_SCALE, 0.0, float(max(1, overscan - 2))))
+    if shake_px <= 0:
+        return enlarged.crop((overscan, overscan, overscan + WIDTH, overscan + HEIGHT))
+
+    dx = int((math.sin(seconds * 23.1) * 0.7 + math.sin(seconds * 57.9) * 0.3) * shake_px)
+    dy = int((math.cos(seconds * 19.7) * 0.6 + math.sin(seconds * 43.3) * 0.4) * shake_px)
+    left = clamp_int(overscan + dx, 0, overscan * 2)
+    top = clamp_int(overscan + dy, 0, overscan * 2)
+    return enlarged.crop((left, top, left + WIDTH, top + HEIGHT))
 
 
 def best_font(size: int) -> ImageFont.ImageFont:
@@ -443,6 +531,7 @@ class RouteInstance:
     target_lon: float
     color: Tuple[int, int, int]
     delay: float
+    speed_mul: float
 
 
 def build_route_instances(scene: Scene, scene_idx: int) -> List[RouteInstance]:
@@ -451,13 +540,14 @@ def build_route_instances(scene: Scene, scene_idx: int) -> List[RouteInstance]:
     for spec in scene.routes:
         s_lat, s_lon = LOCATIONS[spec.source]
         t_lat, t_lon = LOCATIONS[spec.target]
-        line_count = int(clamp((spec.count_hint / 8.0) * ROUTE_DENSITY_SCALE, 8, 52))
+        line_count = int(clamp((spec.count_hint / 8.0) * ROUTE_DENSITY_SCALE * MISSILE_DENSITY_SCALE, 10, 92))
         for i in range(line_count):
             jitter_s_lat = s_lat + rng.uniform(-spec.spread, spec.spread) * 0.55
             jitter_s_lon = s_lon + rng.uniform(-spec.spread, spec.spread)
             jitter_t_lat = t_lat + rng.uniform(-spec.spread, spec.spread) * 0.5
             jitter_t_lon = t_lon + rng.uniform(-spec.spread, spec.spread)
-            delay = (i / max(1, line_count - 1)) * 0.68
+            delay = (i / max(1, line_count - 1)) * 0.66
+            speed_mul = rng.uniform(0.90, 1.12)
             instances.append(
                 RouteInstance(
                     source_lat=jitter_s_lat,
@@ -466,6 +556,7 @@ def build_route_instances(scene: Scene, scene_idx: int) -> List[RouteInstance]:
                     target_lon=jitter_t_lon,
                     color=spec.color,
                     delay=delay,
+                    speed_mul=speed_mul,
                 )
             )
     return instances
@@ -476,6 +567,192 @@ def locate_scene(seconds: float) -> Tuple[Scene, int]:
         if scene.start_s <= seconds < scene.end_s:
             return scene, idx
     return SCENES[-1], len(SCENES) - 1
+
+
+def scene_impacts(scene: Scene) -> Tuple[ImpactSpec, ...]:
+    return SCENE_IMPACTS.get(scene.name, tuple())
+
+
+def impact_energy(scene: Scene, scene_progress: float) -> float:
+    total = 0.0
+    for impact in scene_impacts(scene):
+        dt = scene_progress - impact.start_progress
+        if dt < -0.08 or dt > 0.30:
+            continue
+        if dt < 0:
+            e = 1.0 - abs(dt) / 0.08
+        else:
+            e = max(0.0, 1.0 - dt / 0.30)
+        total += e * impact.strength
+    return total
+
+
+def build_bomber_passes(scene_idx: int) -> List[BomberPass]:
+    rng = random.Random(7000 + scene_idx * 133)
+    count = int(clamp(round((2.1 + (scene_idx % 2) * 0.8) * BOMBER_COUNT_SCALE), 0, 6))
+    passes: List[BomberPass] = []
+    for _ in range(count):
+        passes.append(
+            BomberPass(
+                start_progress=rng.uniform(0.05, 0.72),
+                duration=rng.uniform(0.26, 0.44),
+                y_norm=rng.uniform(0.20, 0.50),
+                direction=1 if rng.random() > 0.5 else -1,
+                size=rng.uniform(0.84, 1.25),
+                trail_alpha=rng.uniform(0.45, 0.80),
+            )
+        )
+    return passes
+
+
+def draw_bomber_passes(
+    draw: ImageDraw.ImageDraw,
+    bombers: Sequence[BomberPass],
+    scene_progress: float,
+    seconds: float,
+) -> None:
+    for bomber in bombers:
+        local = (scene_progress - bomber.start_progress) / max(0.001, bomber.duration)
+        if local < 0.0 or local > 1.0:
+            continue
+
+        if bomber.direction > 0:
+            x = lerp(-160.0, WIDTH + 160.0, local)
+            angle = -0.10
+        else:
+            x = lerp(WIDTH + 160.0, -160.0, local)
+            angle = math.pi + 0.10
+        y = HEIGHT * bomber.y_norm + math.sin((seconds + local * 2.5) * 2.1) * 14.0
+
+        size = 22.0 * bomber.size
+        points = [
+            (-2.0 * size, 0.0),
+            (-1.30 * size, -0.35 * size),
+            (-0.45 * size, -0.25 * size),
+            (0.50 * size, -0.08 * size),
+            (1.90 * size, 0.00),
+            (0.50 * size, 0.08 * size),
+            (-0.45 * size, 0.25 * size),
+            (-1.30 * size, 0.35 * size),
+        ]
+
+        cs = math.cos(angle)
+        sn = math.sin(angle)
+        rotated = [(x + px * cs - py * sn, y + px * sn + py * cs) for px, py in points]
+        draw.polygon(rotated, fill=(20, 20, 24, 232))
+        draw.line(
+            [
+                (x - math.cos(angle) * size * 2.6, y - math.sin(angle) * size * 2.6),
+                (x - math.cos(angle) * size * 5.8, y - math.sin(angle) * size * 5.8),
+            ],
+            fill=(180, 186, 198, int(90 * bomber.trail_alpha)),
+            width=max(1, int(size * 0.08)),
+        )
+
+
+def draw_impact_effects(
+    draw: ImageDraw.ImageDraw,
+    scene: Scene,
+    bbox: Tuple[float, float, float, float],
+    scene_progress: float,
+    seconds: float,
+) -> float:
+    energy_sum = 0.0
+    for impact in scene_impacts(scene):
+        lat, lon = LOCATIONS[impact.hotspot]
+        x, y = lonlat_to_frame_xy(lon, lat, bbox)
+        if x < -180 or x > WIDTH + 180 or y < -180 or y > HEIGHT + 180:
+            continue
+
+        dt = scene_progress - impact.start_progress
+        if dt < -0.06 or dt > 0.32:
+            continue
+
+        if dt < 0:
+            local_energy = max(0.0, 1.0 - (abs(dt) / 0.06))
+        else:
+            local_energy = max(0.0, 1.0 - (dt / 0.32))
+        local_energy *= impact.strength
+        energy_sum += local_energy
+
+        if dt < 0:
+            continue
+
+        ring_base = (10.0 + dt * 340.0 * impact.strength) * IMPACT_RING_SCALE
+        for idx in range(3):
+            rr = ring_base * (1.0 + idx * 0.32)
+            alpha = int(clamp((1.0 - dt / 0.32) * (215 - idx * 56) * EXPLOSION_ALPHA_SCALE, 0, 255))
+            width = max(1, int(4 - idx))
+            draw.ellipse([(x - rr, y - rr), (x + rr, y + rr)], outline=(255, 52, 52, alpha), width=width)
+
+        fire_r = (22.0 - dt * 52.0) * impact.strength * IMPACT_RING_SCALE
+        if fire_r > 1:
+            draw.ellipse(
+                [(x - fire_r, y - fire_r), (x + fire_r, y + fire_r)],
+                fill=(255, 162, 74, int(clamp(166 * (1.0 - dt / 0.32) * EXPLOSION_ALPHA_SCALE, 0, 255))),
+            )
+            inner = fire_r * 0.50
+            draw.ellipse(
+                [(x - inner, y - inner), (x + inner, y + inner)],
+                fill=(255, 235, 196, int(clamp(186 * (1.0 - dt / 0.32), 0, 255))),
+            )
+
+        spark_progress = dt / 0.32
+        for k in range(12):
+            ang = ((k * 137 + int(seconds * 120)) % 360) * (math.pi / 180.0)
+            dist = (16.0 + spark_progress * 160.0) * (0.7 + 0.04 * (k % 5))
+            sx = x + math.cos(ang) * dist
+            sy = y + math.sin(ang) * dist
+            spark_a = int(clamp((1.0 - spark_progress) * 225, 0, 255))
+            spark_r = max(1.0, 2.4 - spark_progress * 1.4)
+            draw.ellipse([(sx - spark_r, sy - spark_r), (sx + spark_r, sy + spark_r)], fill=(255, 205, 126, spark_a))
+
+    return energy_sum
+
+
+def build_smoke_textures() -> List[Image.Image]:
+    textures: List[Image.Image] = []
+    rng = random.Random(9000 + RANDOM_SEED)
+    base_colors = [(58, 68, 86), (74, 84, 101)]
+    for idx, color in enumerate(base_colors):
+        tex = Image.new("L", (WIDTH * 2, HEIGHT * 2), 0)
+        draw = ImageDraw.Draw(tex)
+        for _ in range(260):
+            cx = rng.randint(-120, tex.width + 120)
+            cy = rng.randint(-120, tex.height + 120)
+            rx = rng.randint(80, 260)
+            ry = int(rx * rng.uniform(0.45, 1.08))
+            alpha = rng.randint(8, 32)
+            draw.ellipse([(cx - rx, cy - ry), (cx + rx, cy + ry)], fill=alpha)
+        tex = tex.filter(ImageFilter.GaussianBlur(radius=26 + idx * 10))
+        rgba = Image.new("RGBA", tex.size, color + (0,))
+        rgba.putalpha(tex.point(lambda p: int(clamp(p * SMOKE_ALPHA_SCALE, 0, 255))))
+        textures.append(rgba)
+    return textures
+
+
+def apply_smoke_overlay(frame: Image.Image, textures: Sequence[Image.Image], seconds: float) -> None:
+    for idx, tex in enumerate(textures):
+        max_x = max(1, tex.width - WIDTH)
+        max_y = max(1, tex.height - HEIGHT)
+        x = int((seconds * (12.0 + idx * 6.0)) % max_x)
+        y = int((seconds * (7.0 + idx * 4.0)) % max_y)
+        patch = tex.crop((x, y, x + WIDTH, y + HEIGHT))
+        frame.alpha_composite(patch)
+
+
+def build_grain_frames() -> List[Image.Image]:
+    if GRAIN_ALPHA <= 0:
+        return []
+    frames: List[Image.Image] = []
+    for idx in range(6):
+        sigma = 30 + idx * 3
+        noise = Image.effect_noise((WIDTH, HEIGHT), sigma).convert("L")
+        alpha = noise.point(lambda p: int(clamp(((p - 96) / 159.0) * GRAIN_ALPHA, 0, 255)))
+        grain = Image.new("RGBA", (WIDTH, HEIGHT), (232, 232, 238, 0))
+        grain.putalpha(alpha)
+        frames.append(grain)
+    return frames
 
 
 def draw_hotspot(
@@ -489,9 +766,15 @@ def draw_hotspot(
     x, y = lonlat_to_frame_xy(lon, lat, bbox)
     if x < -120 or x > WIDTH + 120 or y < -120 or y > HEIGHT + 120:
         return
-    pulse_r = 6 + int(8 * (0.5 + 0.5 * math.sin(pulse * 2.0 * math.pi)))
-    draw.ellipse([(x - pulse_r, y - pulse_r), (x + pulse_r, y + pulse_r)], outline=(255, 130, 98, 200), width=2)
-    draw.ellipse([(x - 4, y - 4), (x + 4, y + 4)], fill=(245, 233, 220, 255))
+
+    is_source = name == "Tehran"
+    ring_color = (255, 198, 112, 210) if is_source else (255, 74, 74, 225)
+    core_color = (247, 240, 228, 255) if is_source else (255, 220, 220, 245)
+    pulse_r = int((8 if is_source else 10) + (8 + (4 if is_source else 7)) * (0.5 + 0.5 * math.sin(pulse * 2.0 * math.pi)))
+    pulse_r = int(clamp(pulse_r * TARGET_CIRCLE_SCALE, 6, 38))
+    width = int(clamp(2.0 * TARGET_CIRCLE_SCALE, 1, 4))
+    draw.ellipse([(x - pulse_r, y - pulse_r), (x + pulse_r, y + pulse_r)], outline=ring_color, width=width)
+    draw.ellipse([(x - 4, y - 4), (x + 4, y + 4)], fill=core_color)
     tx = clamp(x + 10, 20, WIDTH - 260)
     ty = clamp(y - 26, 20, HEIGHT - 40)
     draw.text((tx, ty), name, fill=(236, 245, 255, 240), font=font, stroke_width=1, stroke_fill=(0, 0, 0, 180))
@@ -520,6 +803,7 @@ def draw_scene_text(
     )
     draw.text((42, 40), scene.operation_label, fill=(255, 214, 153, alpha), font=font_title)
     draw.text((42, 95), scene.date_label, fill=(216, 232, 247, alpha), font=font_sub)
+    draw.text((WIDTH - 248, 95), scene.name, fill=(228, 233, 240, alpha), font=font_sub)
 
     wrapped = wrap_text(scene.narration, font_body, WIDTH - 180)[:4]
     line_h = 44
@@ -545,7 +829,7 @@ def draw_routes(
     route_instances: Sequence[RouteInstance],
 ) -> None:
     for route in route_instances:
-        local_progress = (scene_progress - route.delay) / max(0.0001, (1.0 - route.delay))
+        local_progress = (scene_progress * route.speed_mul - route.delay) / max(0.0001, (1.0 - route.delay))
         local_progress = clamp(local_progress, 0.0, 1.0)
         if local_progress <= 0.0:
             continue
@@ -561,21 +845,42 @@ def draw_routes(
             continue
 
         arc = build_arc_points(source_xy, target_xy)
-        upto = max(2, int(local_progress * (len(arc) - 1)) + 1)
-        segment = arc[:upto]
+        head_idx = max(1, int(local_progress * (len(arc) - 1)))
+        tail_idx = max(0, head_idx - int(12 * ROUTE_CORE_SCALE))
+        segment = arc[tail_idx : head_idx + 1]
 
-        glow_alpha = int(clamp(110 * ROUTE_GLOW_SCALE, 40, 250))
-        core_alpha = int(clamp(220 * ROUTE_CORE_SCALE, 80, 255))
-        glow_width = int(clamp(7 * ROUTE_GLOW_SCALE, 3, 14))
-        core_width = int(clamp(3 * ROUTE_CORE_SCALE, 2, 8))
+        glow_alpha = int(clamp(118 * ROUTE_GLOW_SCALE, 45, 250))
+        core_alpha = int(clamp(228 * ROUTE_CORE_SCALE, 85, 255))
+        glow_width = int(clamp(7 * ROUTE_GLOW_SCALE, 3, 16))
+        core_width = int(clamp(3 * ROUTE_CORE_SCALE, 2, 9))
         glow = (route.color[0], route.color[1], route.color[2], glow_alpha)
         core = (route.color[0], route.color[1], route.color[2], core_alpha)
         draw.line(segment, fill=glow, width=glow_width)
         draw.line(segment, fill=core, width=core_width)
 
-        marker = segment[-1]
-        r = int(clamp(4 * ROUTE_CORE_SCALE, 2, 8))
-        draw.ellipse([(marker[0] - r, marker[1] - r), (marker[0] + r, marker[1] + r)], fill=(255, 245, 232, 235))
+        head = segment[-1]
+        prev = segment[-2] if len(segment) > 1 else segment[-1]
+        dx = head[0] - prev[0]
+        dy = head[1] - prev[1]
+        mag = max(0.0001, math.hypot(dx, dy))
+        ux = dx / mag
+        uy = dy / mag
+        px = -uy
+        py = ux
+
+        body_len = clamp(8.0 * ROUTE_CORE_SCALE, 5.0, 16.0)
+        body_w = clamp(2.7 * ROUTE_CORE_SCALE, 1.8, 6.5)
+        tip = (head[0] + ux * body_len, head[1] + uy * body_len)
+        left = (head[0] - ux * body_len * 0.45 + px * body_w, head[1] - uy * body_len * 0.45 + py * body_w)
+        right = (head[0] - ux * body_len * 0.45 - px * body_w, head[1] - uy * body_len * 0.45 - py * body_w)
+        draw.polygon([tip, left, right], fill=(255, 240, 210, 246))
+
+        flame_r = clamp(4.2 * ROUTE_GLOW_SCALE, 2.0, 9.0)
+        flame = (head[0] - ux * body_len * 0.9, head[1] - uy * body_len * 0.9)
+        draw.ellipse(
+            [(flame[0] - flame_r, flame[1] - flame_r), (flame[0] + flame_r, flame[1] + flame_r)],
+            fill=(255, 143, 84, 212),
+        )
 
 
 def append_github_output(path: Path) -> None:
@@ -591,6 +896,9 @@ def render_video() -> None:
     route_cache: Dict[int, List[RouteInstance]] = {
         idx: build_route_instances(scene, idx) for idx, scene in enumerate(SCENES)
     }
+    bomber_cache: Dict[int, List[BomberPass]] = {idx: build_bomber_passes(idx) for idx in range(len(SCENES))}
+    smoke_textures = build_smoke_textures()
+    grain_frames = build_grain_frames()
 
     font_title = best_font(52)
     font_sub = best_font(34)
@@ -633,14 +941,27 @@ def render_video() -> None:
         scene_progress = clamp((seconds - scene.start_s) / max(1e-6, scene.duration_s), 0.0, 1.0)
         bbox = lerp_bbox(scene.focus_start, scene.focus_end, smoothstep(scene_progress))
 
-        frame = crop_world_to_frame(world_map, bbox).convert("RGBA")
+        pre_energy = impact_energy(scene, scene_progress)
+        frame = crop_world_to_frame(world_map, bbox, pre_energy, seconds).convert("RGBA")
         frame = add_vignette(frame)
         draw = ImageDraw.Draw(frame, "RGBA")
 
         draw_routes(draw, bbox, scene_progress, route_cache[scene_idx])
+        draw_bomber_passes(draw, bomber_cache[scene_idx], scene_progress, seconds)
         pulse = (seconds * 0.9) % 1.0
         for hotspot in scene.hotspots:
             draw_hotspot(draw, bbox, hotspot, pulse, font_loc)
+
+        impact_drawn_energy = draw_impact_effects(draw, scene, bbox, scene_progress, seconds)
+        if impact_drawn_energy > 1.15:
+            alpha = int(clamp(impact_drawn_energy * 22.0 * EXPLOSION_ALPHA_SCALE, 0, 84))
+            frame.alpha_composite(Image.new("RGBA", (WIDTH, HEIGHT), (255, 92, 62, alpha)))
+
+        apply_smoke_overlay(frame, smoke_textures, seconds)
+        if grain_frames:
+            frame.alpha_composite(grain_frames[frame_idx % len(grain_frames)])
+
+        draw = ImageDraw.Draw(frame, "RGBA")
         draw_scene_text(draw, scene, scene_progress, font_title, font_sub, font_body)
 
         draw.rectangle([(0, HEIGHT - 38), (WIDTH, HEIGHT)], fill=(0, 0, 0, 140))

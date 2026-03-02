@@ -15,6 +15,8 @@ from video_quality_utils import (
     measure_loudness,
     probe_video,
     sample_frame_luma,
+    sample_motion_energy,
+    sample_warm_ratio,
     summarize_metrics,
 )
 
@@ -23,7 +25,10 @@ def recommend(metrics: Dict[str, float]) -> Dict[str, float]:
     mean_luma = metrics.get("mean_luma", 0.0)
     std_luma = metrics.get("std_luma", 0.0)
     loudness_i = metrics.get("input_i", -20.0)
+    loudness_lra = metrics.get("input_lra", 0.0)
     size_mb = metrics.get("size_mb", 0.0)
+    motion_mean = metrics.get("motion_mean", 0.0)
+    warm_ratio = metrics.get("warm_ratio", 0.0)
 
     map_brightness = 1.0
     if mean_luma < 9.0:
@@ -34,20 +39,52 @@ def recommend(metrics: Dict[str, float]) -> Dict[str, float]:
 
     text_alpha_scale = 1.0
     route_glow_scale = 1.0
+    route_density_scale = 1.0
+    missile_density_scale = 1.0
+    shake_scale = 1.0
+    bomber_count_scale = 1.0
+    impact_ring_scale = 1.0
+    target_circle_scale = 1.0
     if std_luma < 7.0:
         text_alpha_scale = 1.20
         route_glow_scale = 1.15
     elif std_luma > 24.0:
         text_alpha_scale = 0.93
 
+    if motion_mean < 8.0:
+        route_density_scale = 1.18
+        missile_density_scale = 1.24
+        shake_scale = 1.20
+        bomber_count_scale = 1.22
+    elif motion_mean > 20.0:
+        route_density_scale = 0.92
+        missile_density_scale = 0.94
+        shake_scale = 0.90
+
+    if warm_ratio < 0.012:
+        impact_ring_scale = 1.24
+        target_circle_scale = 1.20
+    elif warm_ratio > 0.045:
+        impact_ring_scale = 0.92
+        target_circle_scale = 0.92
+
     voice_gain = 1.0
     music_gain = 0.30
+    sfx_gain = 0.24
+    voice_energy = 1.15
     if loudness_i < -16.5:
         voice_gain = 1.12
         music_gain = 0.28
+        sfx_gain = 0.28
     elif loudness_i > -13.0:
         voice_gain = 0.92
         music_gain = 0.24
+        sfx_gain = 0.18
+
+    if loudness_lra < 4.5:
+        voice_energy = 1.28
+    elif loudness_lra > 9.0:
+        voice_energy = 1.00
 
     render_crf = 20.0
     if size_mb < 4.2:
@@ -59,8 +96,16 @@ def recommend(metrics: Dict[str, float]) -> Dict[str, float]:
         "DOC_MAP_BRIGHTNESS": round(map_brightness, 3),
         "DOC_TEXT_ALPHA_SCALE": round(text_alpha_scale, 3),
         "DOC_ROUTE_GLOW_SCALE": round(route_glow_scale, 3),
+        "DOC_ROUTE_DENSITY_SCALE": round(clamp(route_density_scale, 0.75, 1.80), 3),
+        "DOC_MISSILE_DENSITY_SCALE": round(clamp(missile_density_scale, 0.75, 2.20), 3),
+        "DOC_SHAKE_SCALE": round(clamp(shake_scale, 0.0, 2.10), 3),
+        "DOC_BOMBER_COUNT_SCALE": round(clamp(bomber_count_scale, 0.0, 2.30), 3),
+        "DOC_IMPACT_RING_SCALE": round(clamp(impact_ring_scale, 0.70, 2.10), 3),
+        "DOC_TARGET_CIRCLE_SCALE": round(clamp(target_circle_scale, 0.75, 1.80), 3),
         "DOC_VOICE_GAIN": round(voice_gain, 3),
         "DOC_MUSIC_GAIN": round(music_gain, 3),
+        "DOC_SFX_GAIN": round(sfx_gain, 3),
+        "DOC_VOICE_ENERGY": round(voice_energy, 3),
         "DOC_RENDER_CRF": int(render_crf),
     }
 
@@ -85,7 +130,9 @@ def main() -> int:
     probe = probe_video(video_path)
     loudness = measure_loudness(video_path)
     luma = sample_frame_luma(video_path, every_seconds=10, max_frames=18)
-    metrics = summarize_metrics(probe, loudness, luma)
+    motion = sample_motion_energy(video_path, fps=1.2, max_frames=120)
+    warmth = sample_warm_ratio(video_path, every_seconds=6, max_frames=24)
+    metrics = summarize_metrics(probe, loudness, luma, motion=motion, warmth=warmth)
     suggestions = recommend(metrics)
 
     report = {
