@@ -1,0 +1,11 @@
+{
+  "points": [
+    { "name": "Karachi", "lat": 24.8607, "lon": 67.0011 },
+    { "name": "Dubai", "lat": 25.2048, "lon": 55.2708 },
+    { "name": "Istanbul", "lat": 41.0082, "lon": 28.9784 },
+    { "name": "Rome", "lat": 41.9028, "lon": 12.4964 },
+    { "name": "London", "lat": 51.5072, "lon": -0.1276 },
+    { "name": "New York", "lat": 40.7128, "lon": -74.0060 }
+  ]
+}
+
