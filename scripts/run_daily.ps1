@@ -1,6 +1,7 @@
 ﻿param(
     [string]$RunDate = (Get-Date -Format 'yyyy-MM-dd'),
     [int]$Count = 3,
+    [string]$Mode = 'generated',
     [string]$Engine = 'pillow',
     [switch]$WithVoice,
     [string]$PiperModel = ''
@@ -16,7 +17,7 @@ if (!(Test-Path .venv)) {
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 
-$cmd = @('run.py', 'batch', '--date', $RunDate, '--count', $Count, '--engine', $Engine)
+$cmd = @('run.py', 'batch', '--date', $RunDate, '--count', $Count, '--mode', $Mode, '--engine', $Engine)
 if ($WithVoice) {
     $cmd += '--with-voice'
     if ($PiperModel -ne '') {

@@ -42,6 +42,7 @@ def run_pipeline(
     run_date: date,
     index: int,
     config: PipelineConfig,
+    mode: str = "generated",
     engine: str = "pillow",
     with_voice: bool = False,
     piper_model: Optional[Path] = None,
@@ -51,7 +52,7 @@ def run_pipeline(
     ensure_dir(config.state_root)
 
     recent_signatures = load_recent_signatures(config)
-    puzzle = generate_unique_puzzle(run_date=run_date, index=index, recent_signatures=recent_signatures)
+    puzzle = generate_unique_puzzle(run_date=run_date, index=index, recent_signatures=recent_signatures, mode=mode)
     validate_puzzle(puzzle)
 
     artifacts = _build_run_artifacts(config=config, run_date=run_date, index=index)
@@ -97,11 +98,15 @@ def run_pipeline(
         "run_id": artifacts.run_id,
         "run_date": run_date.isoformat(),
         "engine": engine_used,
+        "mode": mode,
         "requested_engine": engine,
         "with_voice": with_voice,
         "final_video": str(final_video),
         "answer": puzzle.answer,
         "puzzle_id": puzzle.puzzle_id,
+        "category": puzzle.category,
+        "source_url": puzzle.source_url,
+        "source_note": puzzle.source_note,
         "signature": puzzle.signature,
         "warnings": warnings,
     }

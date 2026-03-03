@@ -22,6 +22,9 @@ class Puzzle:
     puzzle_id: str
     title: str
     hook: str
+    category: str
+    source_url: str
+    source_note: str
     symbols: Dict[str, PuzzleSymbol]
     equations: List[PuzzleEquation]
     question: str

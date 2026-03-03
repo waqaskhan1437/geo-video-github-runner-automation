@@ -40,6 +40,12 @@ def _build_smte(puzzle: Puzzle) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _eq_text(puzzle: Puzzle, idx: int, fallback: str = "") -> str:
+    if idx < len(puzzle.equations):
+        return puzzle.equations[idx].text
+    return fallback
+
+
 def render_with_scriptimate(puzzle: Puzzle, run_dir: Path, config: PipelineConfig) -> Path:
     npx_exe = which("npx") or which("npx.cmd")
     if npx_exe is None:
@@ -50,9 +56,9 @@ def render_with_scriptimate(puzzle: Puzzle, run_dir: Path, config: PipelineConfi
     # Build text assets used by Scriptimate timeline.
     _write_text_svg(scene_dir / "title.svg", puzzle.title)
     _write_text_svg(scene_dir / "hook.svg", puzzle.hook, font_size=36)
-    _write_text_svg(scene_dir / "eq1.svg", puzzle.equations[0].text)
-    _write_text_svg(scene_dir / "eq2.svg", puzzle.equations[1].text)
-    _write_text_svg(scene_dir / "eq3.svg", puzzle.equations[2].text)
+    _write_text_svg(scene_dir / "eq1.svg", _eq_text(puzzle, 0, puzzle.question))
+    _write_text_svg(scene_dir / "eq2.svg", _eq_text(puzzle, 1, "Solve carefully"))
+    _write_text_svg(scene_dir / "eq3.svg", _eq_text(puzzle, 2, "Find the final value"))
     _write_text_svg(scene_dir / "q1.svg", puzzle.question)
     _write_text_svg(scene_dir / "ans.svg", f"Answer: {puzzle.answer}", font_size=48)
     _write_text_svg(scene_dir / "exp.svg", puzzle.explanation[1], font_size=34)

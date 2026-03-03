@@ -2,7 +2,7 @@
 
 import math
 from pathlib import Path
-from typing import Iterable
+from typing import Sequence
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -19,9 +19,126 @@ def _load_font(size: int) -> ImageFont.ImageFont:
     return ImageFont.load_default()
 
 
-def _text_width(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> int:
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> tuple[int, int]:
     box = draw.textbbox((0, 0), text, font=font)
-    return int(box[2] - box[0])
+    return int(box[2] - box[0]), int(box[3] - box[1])
+
+
+def _split_long_word(draw: ImageDraw.ImageDraw, word: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    chunks: list[str] = []
+    current = ""
+    for ch in word:
+        candidate = current + ch
+        w, _ = _text_size(draw, candidate, font)
+        if w <= max_width or not current:
+            current = candidate
+        else:
+            chunks.append(current)
+            current = ch
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont, max_width: int) -> list[str]:
+    words = text.split()
+    if not words:
+        return [""]
+
+    lines: list[str] = []
+    current: list[str] = []
+
+    for word in words:
+        test_line = " ".join(current + [word])
+        width, _ = _text_size(draw, test_line, font)
+        if width <= max_width:
+            current.append(word)
+            continue
+
+        if current:
+            lines.append(" ".join(current))
+            current = []
+
+        single_width, _ = _text_size(draw, word, font)
+        if single_width > max_width:
+            parts = _split_long_word(draw, word, font, max_width)
+            lines.extend(parts[:-1])
+            current = [parts[-1]]
+        else:
+            current = [word]
+
+    if current:
+        lines.append(" ".join(current))
+
+    return lines
+
+
+def _fit_text_block(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    max_width: int,
+    max_height: int,
+    max_font_size: int,
+    min_font_size: int = 20,
+    line_spacing: int = 8,
+) -> tuple[ImageFont.ImageFont, list[str], int, int]:
+    for size in range(max_font_size, min_font_size - 1, -2):
+        font = _load_font(size)
+        lines = _wrap_text(draw, text, font, max_width)
+        _, line_h = _text_size(draw, "Ag", font)
+        total_h = (line_h * len(lines)) + (line_spacing * max(0, len(lines) - 1))
+        if total_h <= max_height:
+            return font, lines, line_h, total_h
+
+    font = _load_font(min_font_size)
+    lines = _wrap_text(draw, text, font, max_width)
+    _, line_h = _text_size(draw, "Ag", font)
+    total_h = (line_h * len(lines)) + (line_spacing * max(0, len(lines) - 1))
+    return font, lines, line_h, total_h
+
+
+def _draw_wrapped_block(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    box: tuple[int, int, int, int],
+    max_font_size: int,
+    min_font_size: int = 20,
+    line_spacing: int = 8,
+    align: str = "left",
+    valign: str = "top",
+) -> int:
+    x1, y1, x2, y2 = box
+    max_width = max(40, x2 - x1)
+    max_height = max(20, y2 - y1)
+
+    font, lines, line_h, total_h = _fit_text_block(
+        draw=draw,
+        text=text,
+        max_width=max_width,
+        max_height=max_height,
+        max_font_size=max_font_size,
+        min_font_size=min_font_size,
+        line_spacing=line_spacing,
+    )
+
+    if valign == "center":
+        y = y1 + max(0, (max_height - total_h) // 2)
+    else:
+        y = y1
+
+    for line in lines:
+        line_w, _ = _text_size(draw, line, font)
+        if align == "center":
+            x = x1 + max(0, (max_width - line_w) // 2)
+        elif align == "right":
+            x = x2 - line_w
+        else:
+            x = x1
+
+        draw.text((x, y), line, font=font, fill="black")
+        y += line_h + line_spacing
+
+    return y
 
 
 def _draw_flower(draw: ImageDraw.ImageDraw, x: int, y: int, size: int, missing_petal: bool = False) -> None:
@@ -101,83 +218,206 @@ def _draw_equation_line(
     y: int,
     icon_size: int,
     font: ImageFont.ImageFont,
-) -> None:
+    max_width: int,
+) -> int:
     cursor_x = x
+    cursor_y = y
+    line_h = max(icon_size + 8, _text_size(draw, "Ag", font)[1] + 16)
+    max_x = x + max_width
+
     for token in text.split():
         if token in {"F", "F*", "C", "R"}:
-            cursor_x = _draw_symbol(draw, token, cursor_x, y, icon_size)
-            continue
+            token_w = icon_size + 12
+            token_h = icon_size
+        else:
+            token_w = _text_size(draw, token, font)[0] + 16
+            token_h = _text_size(draw, token, font)[1]
 
-        draw.text((cursor_x, y + icon_size // 5), token, font=font, fill="black")
-        cursor_x += _text_width(draw, token, font) + 16
+        if cursor_x + token_w > max_x and cursor_x > x:
+            cursor_x = x
+            cursor_y += line_h
+
+        if token in {"F", "F*", "C", "R"}:
+            _draw_symbol(draw, token, cursor_x, cursor_y, icon_size)
+        else:
+            token_y = cursor_y + max(0, (line_h - token_h) // 2)
+            draw.text((cursor_x, token_y), token, font=font, fill="black")
+
+        cursor_x += token_w
+
+    return cursor_y + line_h + 10
 
 
 def _draw_whiteboard_base(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
-    margin = 36
+    margin = 28
     draw.rectangle((margin, margin, width - margin, height - margin), outline="black", width=4, fill="#FCFCFC")
-    for line in range(8):
-        y = margin + 80 + line * 130
-        draw.line((margin + 24, y, width - margin - 24, y), fill="#E9E9E9", width=2)
+
+    grid_top = margin + 72
+    grid_bottom = height - margin - 24
+    spacing = 92
+    y = grid_top
+    while y <= grid_bottom:
+        draw.line((margin + 18, y, width - margin - 18, y), fill="#E9E9E9", width=2)
+        y += spacing
 
 
-def _draw_scene_hook(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, _height: int, t: float) -> None:
-    title_font = _load_font(56)
-    body_font = _load_font(40)
+def _draw_scene_hook(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    _draw_wrapped_block(
+        draw,
+        puzzle.title,
+        box=(56, 92, width - 56, 238),
+        max_font_size=62,
+        min_font_size=30,
+        line_spacing=6,
+        align="center",
+        valign="center",
+    )
 
-    pulse = 1.0 + (math.sin(t * 4) * 0.02)
-    title = puzzle.title
-    title_w = _text_width(draw, title, title_font)
-    draw.text((int((width - title_w) / 2), 120), title, fill="black", font=title_font)
+    _draw_wrapped_block(
+        draw,
+        puzzle.hook,
+        box=(56, 250, width - 56, 410),
+        max_font_size=42,
+        min_font_size=24,
+        line_spacing=8,
+        align="center",
+        valign="center",
+    )
 
-    hook_text = puzzle.hook
-    hook_w = _text_width(draw, hook_text, body_font)
-    draw.text((int((width - hook_w) / 2), 260), hook_text, fill="black", font=body_font)
+    pulse = 1.0 + (math.sin(t * 4) * 0.03)
+    size = int(min(width, height) * 0.18 * pulse)
+    size = max(72, min(140, size))
 
-    size = int(100 * pulse)
     x = (width // 2) - (size // 2)
-    _draw_flower(draw, x, 420, size, missing_petal=False)
+    y = min(height - size - 180, 430)
+    _draw_flower(draw, x, y, size, missing_petal=False)
 
 
-def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, t: float) -> None:
-    header_font = _load_font(42)
-    eq_font = _load_font(44)
-    timer_font = _load_font(48)
-
-    draw.text((72, 100), "Solve before timer ends", fill="black", font=header_font)
+def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    _draw_wrapped_block(
+        draw,
+        "Solve before timer ends",
+        box=(60, 86, width - 270, 170),
+        max_font_size=44,
+        min_font_size=24,
+        align="left",
+        valign="center",
+    )
 
     elapsed = max(0.0, t - 3.0)
     timer_left = max(0, 10 - int(elapsed))
-    timer_text = f"Timer: {timer_left}s"
-    draw.text((width - 250, 105), timer_text, fill="black", font=timer_font)
+    _draw_wrapped_block(
+        draw,
+        f"Timer: {timer_left}s",
+        box=(width - 230, 86, width - 62, 170),
+        max_font_size=40,
+        min_font_size=22,
+        align="right",
+        valign="center",
+    )
 
-    line_start_y = 270
-    step = 170
-    _draw_equation_line(draw, puzzle.equations[0].text, 90, line_start_y, 80, eq_font)
-    _draw_equation_line(draw, puzzle.equations[1].text, 90, line_start_y + step, 80, eq_font)
-    _draw_equation_line(draw, puzzle.equations[2].text, 90, line_start_y + step * 2, 80, eq_font)
-    _draw_equation_line(draw, puzzle.question, 90, line_start_y + step * 3 + 30, 80, eq_font)
+    eq_font = _load_font(36)
+    cursor_y = 220
+    max_width = width - 130
 
-    draw.text((80, 1130), "Pause and comment your answer", fill="black", font=_load_font(36))
+    for line in puzzle.equations:
+        cursor_y = _draw_equation_line(
+            draw=draw,
+            text=line.text,
+            x=66,
+            y=cursor_y,
+            icon_size=62,
+            font=eq_font,
+            max_width=max_width,
+        )
+        cursor_y += 8
+
+    cursor_y = _draw_equation_line(
+        draw=draw,
+        text=f"Final: {puzzle.question}",
+        x=66,
+        y=cursor_y + 8,
+        icon_size=62,
+        font=_load_font(38),
+        max_width=max_width,
+    )
+
+    footer_top = min(height - 170, cursor_y + 20)
+    _draw_wrapped_block(
+        draw,
+        "Pause, solve, then drop your answer in comments.",
+        box=(60, footer_top, width - 60, height - 52),
+        max_font_size=34,
+        min_font_size=20,
+        align="left",
+        valign="center",
+    )
 
 
-def _draw_scene_solution(draw: ImageDraw.ImageDraw, puzzle: Puzzle, _width: int) -> None:
-    header_font = _load_font(56)
-    line_font = _load_font(40)
+def _draw_scene_solution(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int) -> None:
+    _draw_wrapped_block(
+        draw,
+        f"Answer: {puzzle.answer}",
+        box=(60, 92, width - 60, 220),
+        max_font_size=62,
+        min_font_size=30,
+        align="left",
+        valign="center",
+    )
 
-    draw.text((72, 120), f"Answer: {puzzle.answer}", fill="black", font=header_font)
-
-    y = 320
+    y = 252
     for line in puzzle.explanation:
-        draw.text((72, y), line, fill="black", font=line_font)
-        y += 140
+        y = _draw_wrapped_block(
+            draw,
+            line,
+            box=(60, y, width - 60, y + 160),
+            max_font_size=40,
+            min_font_size=22,
+            align="left",
+            valign="top",
+        ) + 14
 
-    draw.text((72, 1050), "Common trap: F* is missing one petal", fill="black", font=_load_font(36))
+    _draw_wrapped_block(
+        draw,
+        "If you solved this fast, next one will be harder.",
+        box=(60, height - 190, width - 60, height - 58),
+        max_font_size=32,
+        min_font_size=20,
+        align="left",
+        valign="center",
+    )
 
 
-def _draw_scene_cta(draw: ImageDraw.ImageDraw, _puzzle: Puzzle, _width: int) -> None:
-    draw.text((72, 240), "Want harder puzzle?", fill="black", font=_load_font(58))
-    draw.text((72, 420), "Follow for daily UK/USA style brain teasers.", fill="black", font=_load_font(36))
-    draw.text((72, 560), "Next video drops tomorrow.", fill="black", font=_load_font(36))
+def _draw_scene_cta(draw: ImageDraw.ImageDraw, _puzzle: Puzzle, width: int, height: int) -> None:
+    _draw_wrapped_block(
+        draw,
+        "Want harder puzzle?",
+        box=(60, 180, width - 60, 320),
+        max_font_size=64,
+        min_font_size=30,
+        align="left",
+        valign="center",
+    )
+
+    _draw_wrapped_block(
+        draw,
+        "Follow for daily UK and USA style brain teasers with full solution reveal.",
+        box=(60, 370, width - 60, 620),
+        max_font_size=38,
+        min_font_size=20,
+        align="left",
+        valign="top",
+    )
+
+    _draw_wrapped_block(
+        draw,
+        "Next video drops tomorrow.",
+        box=(60, height - 220, width - 60, height - 70),
+        max_font_size=40,
+        min_font_size=24,
+        align="left",
+        valign="center",
+    )
 
 
 def render_frames(puzzle: Puzzle, config: PipelineConfig, frames_dir: Path) -> int:
@@ -196,11 +436,11 @@ def render_frames(puzzle: Puzzle, config: PipelineConfig, frames_dir: Path) -> i
         if t < 3.0:
             _draw_scene_hook(draw, puzzle, config.width, config.height, t)
         elif t < 16.0:
-            _draw_scene_puzzle(draw, puzzle, config.width, t)
+            _draw_scene_puzzle(draw, puzzle, config.width, config.height, t)
         elif t < 23.0:
-            _draw_scene_solution(draw, puzzle, config.width)
+            _draw_scene_solution(draw, puzzle, config.width, config.height)
         else:
-            _draw_scene_cta(draw, puzzle, config.width)
+            _draw_scene_cta(draw, puzzle, config.width, config.height)
 
         frame_path = frames_dir / f"frame_{frame_idx:05d}.png"
         img.save(frame_path, format="PNG")

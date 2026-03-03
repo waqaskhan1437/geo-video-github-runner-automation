@@ -48,8 +48,11 @@ def validate_puzzle(puzzle: Puzzle) -> None:
     if not puzzle.equations:
         raise ValueError("Puzzle requires at least one equation.")
 
-    if "F*" not in puzzle.question:
-        raise ValueError("Puzzle question must include the F* trap marker.")
+    if not puzzle.question.strip():
+        raise ValueError("Puzzle question must not be empty.")
+
+    if not puzzle.explanation:
+        raise ValueError("Puzzle explanation must not be empty.")
 
 
 def export_metadata(path: Path, payload: Dict[str, Any]) -> None:

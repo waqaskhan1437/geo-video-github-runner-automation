@@ -11,6 +11,10 @@ on:
         description: "How many videos"
         required: false
         default: "3"
+      mode:
+        description: "Puzzle mode"
+        required: false
+        default: "generated"
       engine:
         description: "Renderer engine"
         required: false
@@ -51,6 +55,7 @@ jobs:
         env:
           INPUT_DATE: ${{ github.event.inputs.run_date }}
           INPUT_COUNT: ${{ github.event.inputs.count }}
+          INPUT_MODE: ${{ github.event.inputs.mode }}
           INPUT_ENGINE: ${{ github.event.inputs.engine }}
         run: |
           RUN_DATE="$INPUT_DATE"
@@ -63,12 +68,17 @@ jobs:
             COUNT="3"
           fi
 
+          MODE="$INPUT_MODE"
+          if [ -z "$MODE" ]; then
+            MODE="generated"
+          fi
+
           ENGINE="$INPUT_ENGINE"
           if [ -z "$ENGINE" ]; then
             ENGINE="pillow"
           fi
 
-          python run.py batch --date "$RUN_DATE" --count "$COUNT" --engine "$ENGINE"
+          python run.py batch --date "$RUN_DATE" --count "$COUNT" --mode "$MODE" --engine "$ENGINE"
 
       - name: Upload outputs
         uses: actions/upload-artifact@v4

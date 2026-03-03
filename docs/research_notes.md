@@ -27,3 +27,5 @@ This project implementation follows a CPU-first and self-hosted strategy.
 7. GitHub Actions limits: https://docs.github.com/en/enterprise-cloud@latest/actions/reference/actions-limits
 8. GitHub hosted runners: https://docs.github.com/en/actions/reference/runners/github-hosted-runners
 9. GitHub Actions billing: https://docs.github.com/billing/managing-billing-for-github-actions/about-billing-for-github-actions
+10. Cognitive Reflection Test reference: https://en.wikipedia.org/wiki/Cognitive_reflection_test
+11. Chickens and rabbits puzzle reference: https://www.numbrix.net/problems/chickens-and-rabbits-head-and-feet-puzzle/

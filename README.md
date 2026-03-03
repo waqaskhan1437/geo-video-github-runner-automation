@@ -7,9 +7,11 @@ This repository is rebuilt from scratch for a CPU-first, self-hosted, command-li
 1. Generates a new puzzle script every day (date-seeded + uniqueness guard).
 2. Validates answer logic to avoid wrong or dummy puzzle outputs.
 3. Renders whiteboard-style vertical video frames on CPU.
-4. Builds final MP4 with FFmpeg.
-5. Optionally adds local realistic voice-over with Piper TTS.
-6. Runs locally or through GitHub Actions schedule.
+4. Uses adaptive text wrapping/shrinking to prevent overflow.
+5. Builds final MP4 with FFmpeg.
+6. Optionally adds local realistic voice-over with Piper TTS.
+7. Runs locally or through GitHub Actions schedule.
+8. Supports `generated` mode and `internet` mode puzzle templates.
 
 ## Free tool plan used in this codebase
 
@@ -52,11 +54,18 @@ python run.py run --date 2026-03-04 --engine pillow
 python run.py batch --date 2026-03-04 --count 3 --engine pillow
 ```
 
+## Internet puzzle mode (2 videos)
+
+```bash
+python run.py batch --date 2026-03-04 --count 2 --mode internet --engine pillow
+```
+
 ## Voice-over run (Piper local TTS)
 
 ```bash
 python run.py run \
   --date 2026-03-04 \
+  --mode internet \
   --engine pillow \
   --with-voice \
   --piper-model models/en_US-amy-medium.onnx
@@ -88,7 +97,7 @@ Workflow files:
 2. `.github/workflows/runner-full-check.yml`
 
 1. Scheduled daily run at `03:20 UTC`.
-2. Manual run via `workflow_dispatch` with date/count/engine inputs.
+2. Manual run via `workflow_dispatch` with date/count/mode/engine inputs.
 3. Uploads generated videos as workflow artifacts.
 
 `runner-full-check.yml` performs a complete CI smoke test on GitHub runner:
@@ -97,7 +106,8 @@ Workflow files:
 2. Installs project dependencies (including Piper voice stack).
 3. Downloads a free Piper model.
 4. Runs `pillow`, `scriptimate`, and `with-voice` generation tests.
-5. Verifies `video_final.mp4` includes audio stream.
+5. Runs internet mode batch generation for 2 videos.
+6. Verifies `video_final.mp4` includes audio stream.
 
 ## Local helper script
 
@@ -112,3 +122,4 @@ PowerShell helper:
 1. This repo is intentionally CPU-first and fully free for base operation.
 2. For best human-like voice quality, use Piper models tuned for your target accent.
 3. Keep puzzle uniqueness high by preserving `state/history.json` between runs.
+4. Internet-sourced puzzle inspirations used in this repo are listed in `docs/internet_question_sources.md`.

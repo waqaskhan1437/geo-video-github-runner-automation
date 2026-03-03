@@ -23,6 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd = subparsers.add_parser("run", help="Generate one video")
     run_cmd.add_argument("--date", default=date.today().isoformat(), help="Run date in YYYY-MM-DD")
     run_cmd.add_argument("--index", type=int, default=1, help="Daily index for multiple videos")
+    run_cmd.add_argument("--mode", choices=["generated", "internet"], default="generated", help="Puzzle source mode")
     run_cmd.add_argument("--engine", choices=["pillow", "scriptimate"], default="pillow", help="Rendering engine")
     run_cmd.add_argument("--fps", type=int, default=24, help="Output frame rate")
     run_cmd.add_argument("--width", type=int, default=720, help="Output width")
@@ -34,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     batch_cmd = subparsers.add_parser("batch", help="Generate N daily videos")
     batch_cmd.add_argument("--date", default=date.today().isoformat(), help="Run date in YYYY-MM-DD")
     batch_cmd.add_argument("--count", type=int, default=3, help="How many videos to generate")
+    batch_cmd.add_argument("--mode", choices=["generated", "internet"], default="generated")
     batch_cmd.add_argument("--engine", choices=["pillow", "scriptimate"], default="pillow")
     batch_cmd.add_argument("--fps", type=int, default=24)
     batch_cmd.add_argument("--width", type=int, default=720)
@@ -68,6 +70,7 @@ def main() -> int:
             run_date=run_date,
             index=args.index,
             config=config,
+            mode=args.mode,
             engine=args.engine,
             with_voice=args.with_voice,
             piper_model=piper_model,
@@ -88,6 +91,7 @@ def main() -> int:
                 run_date=run_date,
                 index=idx,
                 config=config,
+                mode=args.mode,
                 engine=args.engine,
                 with_voice=args.with_voice,
                 piper_model=piper_model,
