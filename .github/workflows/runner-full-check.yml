@@ -1,0 +1,70 @@
+﻿name: Runner Full Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  full-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Download Piper model
+        run: |
+          mkdir -p models
+          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" -o "models/en_US-amy-medium.onnx"
+          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json" -o "models/en_US-amy-medium.onnx.json"
+
+      - name: Run pillow engine test
+        run: |
+          RUN_DATE="$(date -u +%F)"
+          python run.py run --date "$RUN_DATE" --index 1 --engine pillow
+
+      - name: Run scriptimate engine test
+        run: |
+          RUN_DATE="$(date -u +%F)"
+          python run.py run --date "$RUN_DATE" --index 2 --engine scriptimate
+
+      - name: Run voice-over test
+        run: |
+          RUN_DATE="$(date -u +%F)"
+          python run.py run --date "$RUN_DATE" --index 3 --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+
+      - name: Verify final output has audio
+        run: |
+          RUN_DATE="$(date -u +%Y%m%d)"
+          FINAL_FILE="output/whiteboard_${RUN_DATE}_03/video_final.mp4"
+          test -f "$FINAL_FILE"
+          ffprobe -v error -show_entries stream=codec_type -of default=noprint_wrappers=1 "$FINAL_FILE"
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-full-check-${{ github.run_number }}
+          path: |
+            output/**
+            state/history.json
+          if-no-files-found: error

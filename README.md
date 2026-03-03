@@ -82,11 +82,22 @@ If Scriptimate fails or is unavailable, the pipeline falls back to the Pillow re
 
 ## GitHub Actions
 
-Workflow file: `.github/workflows/daily-whiteboard.yml`
+Workflow files:
+
+1. `.github/workflows/daily-whiteboard.yml`
+2. `.github/workflows/runner-full-check.yml`
 
 1. Scheduled daily run at `03:20 UTC`.
 2. Manual run via `workflow_dispatch` with date/count/engine inputs.
 3. Uploads generated videos as workflow artifacts.
+
+`runner-full-check.yml` performs a complete CI smoke test on GitHub runner:
+
+1. Installs Python + Node + FFmpeg.
+2. Installs project dependencies (including Piper voice stack).
+3. Downloads a free Piper model.
+4. Runs `pillow`, `scriptimate`, and `with-voice` generation tests.
+5. Verifies `video_final.mp4` includes audio stream.
 
 ## Local helper script
 
