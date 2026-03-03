@@ -1,6 +1,9 @@
 ﻿name: Runner Full Check
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
