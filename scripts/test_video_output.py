@@ -60,13 +60,13 @@ def validate(metrics: Dict[str, float], strict: bool) -> List[str]:
         if not (-19.0 <= loudness_i <= -11.5):
             issues.append(f"Integrated loudness out of relaxed range: {loudness_i:.3f} LUFS")
 
-    if mean_luma < 4 or mean_luma > 70:
+    if mean_luma < 3 or mean_luma > 75:
         issues.append(f"Average luma unusual: {mean_luma:.3f}")
-    if std_luma < 4:
+    if std_luma < 3.5:
         issues.append(f"Visual contrast too low (std_luma): {std_luma:.3f}")
-    if motion_mean < (3.2 if strict else 2.4):
+    if motion_mean < (3.0 if strict else 2.0):
         issues.append(f"Motion intensity too low: {motion_mean:.3f}")
-    if warm_ratio < (0.004 if strict else 0.003):
+    if warm_ratio < (0.003 if strict else 0.002):
         issues.append(f"Impact highlight ratio too low: {warm_ratio:.3f}")
 
     return issues

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Render a 2-minute documentary-style map timeline video.
+Render a 2-minute documentary-style map timeline video with enhanced visual effects.
 
 Main env vars:
 - DOC_VISUAL_OUTPUT (default: outputs/final/conflict_documentary_visual.mp4)
@@ -12,7 +12,10 @@ Main env vars:
 - DOC_ROUTE_DENSITY_SCALE (default: 1.0)
 - DOC_MISSILE_DENSITY_SCALE / DOC_IMPACT_RING_SCALE / DOC_TARGET_CIRCLE_SCALE
 - DOC_SHAKE_SCALE / DOC_BOMBER_COUNT_SCALE
-- DOC_SMOKE_ALPHA_SCALE / DOC_EXPLOSION_ALPHA_SCALE / DOC_GRAIN_ALPHA
+- DOC_SMOKE_ALPHA_SCALE / DOC_EXPLOSION_ALPHA_SCALE / DOC_GRAIN_ALPHA (default: 38)
+- DOC_COLOR_GRADING (default: 1) - enable scene color grading
+- DOC_RADAR_SWEEP (default: 1) - enable radar sweep effect
+- DOC_TIMELINE_BAR (default: 1) - enable progress timeline bar
 - DOC_RENDER_CRF (default: 20)
 - DOC_RENDER_PRESET (default: medium)
 """
@@ -75,8 +78,11 @@ SHAKE_SCALE = env_float("DOC_SHAKE_SCALE", 1.0, 0.00, 2.30)
 BOMBER_COUNT_SCALE = env_float("DOC_BOMBER_COUNT_SCALE", 1.0, 0.00, 2.50)
 SMOKE_ALPHA_SCALE = env_float("DOC_SMOKE_ALPHA_SCALE", 1.0, 0.50, 2.20)
 EXPLOSION_ALPHA_SCALE = env_float("DOC_EXPLOSION_ALPHA_SCALE", 1.0, 0.60, 2.20)
-GRAIN_ALPHA = env_int("DOC_GRAIN_ALPHA", 28, 0, 95)
+GRAIN_ALPHA = env_int("DOC_GRAIN_ALPHA", 38, 0, 95)
 VIGNETTE_ALPHA = env_int("DOC_VIGNETTE_ALPHA", 120, 40, 220)
+COLOR_GRADING_ENABLED = env_int("DOC_COLOR_GRADING", 1, 0, 1) == 1
+RADAR_SWEEP_ENABLED = env_int("DOC_RADAR_SWEEP", 1, 0, 1) == 1
+TIMELINE_BAR_ENABLED = env_int("DOC_TIMELINE_BAR", 1, 0, 1) == 1
 RENDER_CRF = env_int("DOC_RENDER_CRF", 20, 16, 28)
 RENDER_PRESET = env_str("DOC_RENDER_PRESET", "medium")
 RANDOM_SEED = env_int("DOC_RANDOM_SEED", 1234, 1, 9999999)
@@ -678,6 +684,9 @@ def draw_impact_effects(
         if dt < 0:
             continue
 
+        draw_explosion_bloom(draw, x, y, (1.0 - dt / 0.32) * impact.strength)
+        draw_lens_flare(draw, x, y, (1.0 - dt / 0.32) * impact.strength * 0.7)
+
         ring_base = (10.0 + dt * 340.0 * impact.strength) * IMPACT_RING_SCALE
         for idx in range(3):
             rr = ring_base * (1.0 + idx * 0.32)
@@ -708,6 +717,113 @@ def draw_impact_effects(
             draw.ellipse([(sx - spark_r, sy - spark_r), (sx + spark_r, sy + spark_r)], fill=(255, 205, 126, spark_a))
 
     return energy_sum
+
+
+def get_scene_color_grade(scene_idx: int) -> Tuple[int, int, int]:
+    """Return color grade overlay for each scene."""
+    grades = [
+        (255, 165, 0, 12),  # Scene 1: warm amber
+        (255, 180, 60, 10),  # Scene 2: warm amber
+        (100, 180, 255, 15),  # Scene 3: cold blue-steel
+        (255, 140, 80, 14),  # Scene 4: deep orange/sunset
+        (120, 140, 160, 16),  # Scene 5: desaturated gray-blue
+        (110, 130, 150, 18),  # Scene 6: desaturated gray-blue
+    ]
+    if scene_idx < len(grades):
+        return grades[scene_idx][:3]
+    return (255, 255, 255)
+
+
+def draw_explosion_bloom(draw: ImageDraw.ImageDraw, x: float, y: float, strength: float) -> None:
+    """Draw explosion bloom with radial gradient rings."""
+    max_r = 80.0 * strength * EXPLOSION_ALPHA_SCALE
+    for ring_idx in range(6, 0, -1):
+        r = max_r * (ring_idx / 6.0)
+        if ring_idx == 6:
+            color = (255, 255, 200, int(40 * strength))
+        elif ring_idx == 5:
+            color = (255, 220, 100, int(60 * strength))
+        elif ring_idx == 4:
+            color = (255, 180, 80, int(80 * strength))
+        elif ring_idx == 3:
+            color = (255, 120, 60, int(90 * strength))
+        elif ring_idx == 2:
+            color = (200, 60, 40, int(70 * strength))
+        else:
+            color = (100, 30, 20, int(40 * strength))
+        draw.ellipse([(x - r, y - r), (x + r, y + r)], fill=color)
+
+
+def draw_lens_flare(draw: ImageDraw.ImageDraw, x: float, y: float, strength: float) -> None:
+    """Draw lens flare spikes from impact point."""
+    spike_len = 120.0 * strength * EXPLOSION_ALPHA_SCALE
+    spike_colors = [(255, 255, 220, int(120 * strength)), (220, 200, 180, int(80 * strength))]
+    for angle_deg in [0, 90, 180, 270]:
+        angle = angle_deg * math.pi / 180.0
+        dx = math.cos(angle) * spike_len
+        dy = math.sin(angle) * spike_len
+        for idx, color in enumerate(spike_colors):
+            width = max(1, int(8 - idx * 3))
+            draw.line([(x, y), (x + dx * (0.6 if idx else 1.0), y + dy * (0.6 if idx else 1.0))], fill=color, width=width)
+
+
+def draw_missile_trail(draw: ImageDraw.ImageDraw, segment: Sequence[Tuple[float, float]], strength: float) -> None:
+    """Draw trailing particles behind missile."""
+    if len(segment) < 2:
+        return
+    head = segment[-1]
+    for i in range(1, min(9, len(segment))):
+        idx = len(segment) - 1 - i
+        trail_pt = segment[idx]
+        progress = i / 8.0
+        alpha = int(120 * (1.0 - progress) * strength * ROUTE_GLOW_SCALE)
+        radius = max(1.0, 3.0 * (1.0 - progress))
+        draw.ellipse(
+            [(trail_pt[0] - radius, trail_pt[1] - radius), (trail_pt[0] + radius, trail_pt[1] + radius)],
+            fill=(255, 180, 100, alpha),
+        )
+    exhaust_r = max(2.0, 6.0 * strength * ROUTE_GLOW_SCALE)
+    draw.ellipse([(head[0] - exhaust_r, head[1] - exhaust_r), (head[0] + exhaust_r, head[1] + exhaust_r)], fill=(255, 150, 80, int(140 * strength)))
+
+
+def draw_radar_sweep(draw: ImageDraw.ImageDraw, bbox: Tuple[float, float, float, float], scene_progress: float, scene_idx: int) -> None:
+    """Draw rotating radar sweep from Tehran before missile launch."""
+    if scene_progress > 0.25:
+        return
+    lat, lon = LOCATIONS["Tehran"]
+    cx, cy = lonlat_to_frame_xy(lon, lat, bbox)
+    if cx < 0 or cx > WIDTH or cy < 0 or cy > HEIGHT:
+        return
+    angle = scene_progress * 8.0 * math.pi
+    sweep_r = 120.0
+    for ring_idx in range(3, 0, -1):
+        r = sweep_r * (ring_idx / 3.0)
+        ring_alpha = int(80 * (3 - ring_idx) / 3.0 * (1.0 - scene_progress * 4))
+        for seg_idx in range(16):
+            a1 = angle + (seg_idx * 2.0 * math.pi / 16.0)
+            a2 = a1 + math.pi / 16.0
+            x1, y1 = cx + math.cos(a1) * r, cy + math.sin(a1) * r
+            x2, y2 = cx + math.cos(a2) * r, cy + math.sin(a2) * r
+            draw.polygon([(cx, cy), (x1, y1), (x2, y2)], fill=(100, 200, 100, ring_alpha))
+
+
+def draw_timeline_bar(draw: ImageDraw.ImageDraw, frame_idx: int) -> None:
+    """Draw progress bar at bottom with scene markers."""
+    bar_y = HEIGHT - 10
+    bar_h = 4
+    total_progress = frame_idx / TOTAL_FRAMES
+    filled_w = int(WIDTH * total_progress)
+    draw.rectangle([(0, bar_y), (filled_w, bar_y + bar_h)], fill=(100, 180, 255, 180))
+    for scene in SCENES:
+        scene_prog = scene.start_s / TOTAL_SECONDS
+        marker_x = int(scene_prog * WIDTH)
+        draw.rectangle([(marker_x - 1, bar_y - 3), (marker_x + 1, bar_y + bar_h + 2)], fill=(200, 200, 220, 200), width=1)
+
+
+def apply_color_grading(frame: Image.Image, color: Tuple[int, int, int], alpha: int) -> None:
+    """Apply color grade overlay to frame."""
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), color + (alpha,))
+    frame.alpha_composite(overlay)
 
 
 def build_smoke_textures() -> List[Image.Image]:
@@ -858,6 +974,8 @@ def draw_routes(
         draw.line(segment, fill=glow, width=glow_width)
         draw.line(segment, fill=core, width=core_width)
 
+        draw_missile_trail(draw, segment, local_progress)
+
         head = segment[-1]
         prev = segment[-2] if len(segment) > 1 else segment[-1]
         dx = head[0] - prev[0]
@@ -946,6 +1064,9 @@ def render_video() -> None:
         frame = add_vignette(frame)
         draw = ImageDraw.Draw(frame, "RGBA")
 
+        if RADAR_SWEEP_ENABLED:
+            draw_radar_sweep(draw, bbox, scene_progress, scene_idx)
+
         draw_routes(draw, bbox, scene_progress, route_cache[scene_idx])
         draw_bomber_passes(draw, bomber_cache[scene_idx], scene_progress, seconds)
         pulse = (seconds * 0.9) % 1.0
@@ -958,11 +1079,17 @@ def render_video() -> None:
             frame.alpha_composite(Image.new("RGBA", (WIDTH, HEIGHT), (255, 92, 62, alpha)))
 
         apply_smoke_overlay(frame, smoke_textures, seconds)
+        if COLOR_GRADING_ENABLED:
+            grade_color = get_scene_color_grade(scene_idx)
+            apply_color_grading(frame, grade_color, 20)
+
         if grain_frames:
             frame.alpha_composite(grain_frames[frame_idx % len(grain_frames)])
 
         draw = ImageDraw.Draw(frame, "RGBA")
         draw_scene_text(draw, scene, scene_progress, font_title, font_sub, font_body)
+        if TIMELINE_BAR_ENABLED:
+            draw_timeline_bar(draw, frame_idx)
 
         draw.rectangle([(0, HEIGHT - 38), (WIDTH, HEIGHT)], fill=(0, 0, 0, 140))
         draw.text((22, HEIGHT - 31), WATERMARK, fill=(210, 227, 242, 220), font=font_watermark)

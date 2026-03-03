@@ -141,7 +141,7 @@ VOICE_RATE = env_str("DOC_VOICE_RATE", "-20%")
 VOICE_PITCH = env_str("DOC_VOICE_PITCH", "+0Hz")
 VOICE_ENGINE = env_str("DOC_VOICE_ENGINE", "auto").lower()
 VOICE_STYLE = env_str("DOC_VOICE_STYLE", "energetic").lower()
-VOICE_ENERGY = env_float("DOC_VOICE_ENERGY", 1.15, 0.70, 1.60)
+VOICE_ENERGY = env_float("DOC_VOICE_ENERGY", 1.30, 0.70, 1.60)
 VOICE_VARIATION = env_float("DOC_VOICE_VARIATION", 1.00, 0.30, 2.00)
 VOICE_GAIN = env_float("DOC_VOICE_GAIN", 1.0, 0.70, 1.60)
 MUSIC_GAIN = env_float("DOC_MUSIC_GAIN", 0.30, 0.08, 0.80)
@@ -355,13 +355,16 @@ def generate_voice() -> None:
 def generate_music_bed() -> None:
     outro_start = max(0.0, TARGET_SECONDS - 4.0)
     expr = (
-        f"sine=frequency=74:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.055[a0];"
-        f"sine=frequency=111:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.038[a1];"
+        f"sine=frequency=110:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.045[a0];"
+        f"sine=frequency=165:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.040[a1];"
+        f"sine=frequency=220:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.035[a2];"
+        f"sine=frequency=165:duration={TARGET_SECONDS}:sample_rate=44100,volume=0.038[a3];"
         f"anoisesrc=color=pink:duration={TARGET_SECONDS}:sample_rate=44100,"
-        "lowpass=f=1300,highpass=f=120,volume=0.011[a2];"
-        f"sine=frequency=43:duration={TARGET_SECONDS}:sample_rate=44100,"
-        "lowpass=f=180,volume=0.024[a3];"
-        f"[a0][a1][a2][a3]amix=inputs=4:normalize=0,afade=t=in:st=0:d=2,afade=t=out:st={outro_start}:d=4"
+        "lowpass=f=1600,highpass=f=150,volume=0.015[a4];"
+        f"sine=frequency=30:duration={TARGET_SECONDS}:sample_rate=44100,"
+        "lowpass=f=200,volume=0.032[a5];"
+        f"[a0][a1][a2][a3][a4][a5]amix=inputs=6:normalize=0,"
+        f"afade=t=in:st=0:d=2,afade=t=out:st={outro_start}:d=4"
     )
     run(
         [
@@ -389,18 +392,30 @@ def generate_sfx_track() -> None:
         rng = random.Random(3217)
         for impact_time in impact_times:
             start = int(impact_time * sr)
-            duration = int(1.55 * sr)
+            duration = int(1.8 * sr)
             for i in range(duration):
                 idx = start + i
                 if idx >= total_samples:
                     break
                 t = i / sr
-                env = math.exp(-3.2 * t)
-                rumble = math.sin(2.0 * math.pi * (48.0 + 8.0 * math.sin(t * 9.0)) * t)
+                env = math.exp(-3.5 * t)
+                shock = math.exp(-12.0 * t) * math.sin(2.0 * math.pi * 4200.0 * t) if t < 0.08 else 0
+                rumble_48 = math.sin(2.0 * math.pi * 48.0 * t)
+                rumble_24 = math.sin(2.0 * math.pi * 24.0 * t) * 0.6
+                ring = math.sin(2.0 * math.pi * 2400.0 * t) * math.exp(-2.5 * t) if t < 0.35 else 0
                 crack = rng.uniform(-1.0, 1.0)
+                debris = rng.uniform(-0.8, 0.8) * math.exp(-4.0 * t) if t < 0.5 else 0
                 hiss = math.sin(2.0 * math.pi * (220.0 - 140.0 * min(1.0, t / 0.45)) * t)
-                sample = (0.58 * rumble + 0.32 * crack + 0.20 * hiss) * env
-                pcm[idx] += sample * 0.28
+                sample = (
+                    0.20 * shock +
+                    0.40 * rumble_48 +
+                    0.25 * rumble_24 +
+                    0.12 * ring +
+                    0.15 * crack +
+                    0.10 * debris +
+                    0.12 * hiss
+                ) * env
+                pcm[idx] += sample * 0.32
 
     with wave.open(str(SFX_TRACK), "wb") as wav:
         wav.setnchannels(1)
@@ -415,13 +430,16 @@ def generate_sfx_track() -> None:
 
 def mix_audio() -> None:
     filter_complex = (
-        "[0:a]highpass=f=70,lowpass=f=10000,dynaudnorm=f=120:g=15,"
-        "acompressor=threshold=-20dB:ratio=2.8:attack=6:release=110,"
+        "[0:a]highpass=f=65,lowpass=f=10200,asetrate=44100,"
+        "lowpass=f=250:poles=2:a=0.707[warmth];"
+        "[warmth]dynaudnorm=f=120:g=15,"
+        "acompressor=threshold=-22dB:ratio=3.0:attack=8:release=120,"
+        f"aecho=0.7:0.8:200:0.9,"
         f"volume={VOICE_GAIN:.4f}[voice];"
         f"[1:a]volume={MUSIC_GAIN:.4f}[music];"
         f"[2:a]volume={SFX_GAIN:.4f}[sfx];"
-        "[voice][music][sfx]amix=inputs=3:normalize=0,"
-        "alimiter=limit=0.95,loudnorm=I=-14:TP=-1.2:LRA=10:linear=true:print_format=none,"
+        "[voice][music][sfx]amix=inputs=3:normalize=0,acompressor=threshold=-18dB:ratio=1.8,"
+        "alimiter=limit=0.97,loudnorm=I=-14:TP=-1.2:LRA=11:linear=true:print_format=none,"
         f"atrim=duration={TARGET_SECONDS}"
     )
     run(

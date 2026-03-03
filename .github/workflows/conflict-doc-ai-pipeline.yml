@@ -65,19 +65,22 @@ jobs:
         env:
           DOC_VISUAL_OUTPUT: outputs/final/conflict_visual_pass1.mp4
           DOC_SECONDS: ${{ inputs.target_seconds || '120' }}
-          DOC_MAP_BRIGHTNESS: "1.00"
-          DOC_TEXT_ALPHA_SCALE: "1.00"
-          DOC_ROUTE_GLOW_SCALE: "1.00"
-          DOC_ROUTE_CORE_SCALE: "1.00"
-          DOC_ROUTE_DENSITY_SCALE: "1.10"
-          DOC_MISSILE_DENSITY_SCALE: "1.18"
-          DOC_IMPACT_RING_SCALE: "1.20"
-          DOC_TARGET_CIRCLE_SCALE: "1.16"
-          DOC_SHAKE_SCALE: "1.12"
-          DOC_BOMBER_COUNT_SCALE: "1.10"
-          DOC_SMOKE_ALPHA_SCALE: "1.00"
-          DOC_EXPLOSION_ALPHA_SCALE: "1.12"
-          DOC_GRAIN_ALPHA: "30"
+          DOC_MAP_BRIGHTNESS: "1.02"
+          DOC_TEXT_ALPHA_SCALE: "1.05"
+          DOC_ROUTE_GLOW_SCALE: "1.08"
+          DOC_ROUTE_CORE_SCALE: "1.06"
+          DOC_ROUTE_DENSITY_SCALE: "1.15"
+          DOC_MISSILE_DENSITY_SCALE: "1.22"
+          DOC_IMPACT_RING_SCALE: "1.28"
+          DOC_TARGET_CIRCLE_SCALE: "1.20"
+          DOC_SHAKE_SCALE: "1.18"
+          DOC_BOMBER_COUNT_SCALE: "1.14"
+          DOC_SMOKE_ALPHA_SCALE: "1.02"
+          DOC_EXPLOSION_ALPHA_SCALE: "1.25"
+          DOC_GRAIN_ALPHA: "38"
+          DOC_COLOR_GRADING: "1"
+          DOC_RADAR_SWEEP: "1"
+          DOC_TIMELINE_BAR: "1"
         run: python scripts/render_conflict_documentary.py
 
       - name: Pass 1 voice + audio mix
@@ -91,10 +94,10 @@ jobs:
           DOC_VOICE_PITCH: ${{ inputs.voice_pitch || '+0Hz' }}
           DOC_VOICE_ENGINE: "auto"
           DOC_VOICE_STYLE: "energetic"
-          DOC_VOICE_ENERGY: "1.20"
-          DOC_VOICE_GAIN: "1.00"
-          DOC_MUSIC_GAIN: "0.32"
-          DOC_SFX_GAIN: "0.24"
+          DOC_VOICE_ENERGY: "1.30"
+          DOC_VOICE_GAIN: "1.08"
+          DOC_MUSIC_GAIN: "0.36"
+          DOC_SFX_GAIN: "0.28"
         run: python scripts/build_conflict_audio_and_mux.py
 
       - name: Pass 1 quality test (informational)

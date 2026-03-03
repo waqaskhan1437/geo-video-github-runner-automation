@@ -33,9 +33,9 @@ def recommend(metrics: Dict[str, float]) -> Dict[str, float]:
     map_brightness = 1.0
     if mean_luma < 9.0:
         map_brightness = 1.0 + ((9.0 - mean_luma) / 24.0)
-    elif mean_luma > 26.0:
-        map_brightness = 1.0 - ((mean_luma - 26.0) / 36.0)
-    map_brightness = clamp(map_brightness, 0.85, 1.25)
+    elif mean_luma > 28.0:
+        map_brightness = 1.0 - ((mean_luma - 28.0) / 40.0)
+    map_brightness = clamp(map_brightness, 0.82, 1.30)
 
     text_alpha_scale = 1.0
     route_glow_scale = 1.0
@@ -45,63 +45,69 @@ def recommend(metrics: Dict[str, float]) -> Dict[str, float]:
     bomber_count_scale = 1.0
     impact_ring_scale = 1.0
     target_circle_scale = 1.0
+    grain_alpha = 38
     if std_luma < 7.0:
-        text_alpha_scale = 1.20
-        route_glow_scale = 1.15
-    elif std_luma > 24.0:
-        text_alpha_scale = 0.93
+        text_alpha_scale = 1.25
+        route_glow_scale = 1.20
+        grain_alpha = 42
+    elif std_luma > 26.0:
+        text_alpha_scale = 0.90
+        grain_alpha = 34
 
-    if motion_mean < 8.0:
-        route_density_scale = 1.18
-        missile_density_scale = 1.24
-        shake_scale = 1.20
-        bomber_count_scale = 1.22
-    elif motion_mean > 20.0:
-        route_density_scale = 0.92
-        missile_density_scale = 0.94
-        shake_scale = 0.90
+    if motion_mean < 7.5:
+        route_density_scale = 1.22
+        missile_density_scale = 1.28
+        shake_scale = 1.25
+        bomber_count_scale = 1.26
+    elif motion_mean > 22.0:
+        route_density_scale = 0.88
+        missile_density_scale = 0.90
+        shake_scale = 0.85
 
-    if warm_ratio < 0.012:
-        impact_ring_scale = 1.24
-        target_circle_scale = 1.20
-    elif warm_ratio > 0.045:
-        impact_ring_scale = 0.92
-        target_circle_scale = 0.92
+    if warm_ratio < 0.008:
+        impact_ring_scale = 1.30
+        target_circle_scale = 1.25
+    elif warm_ratio > 0.050:
+        impact_ring_scale = 0.88
+        target_circle_scale = 0.88
 
-    voice_gain = 1.0
-    music_gain = 0.30
-    sfx_gain = 0.24
-    voice_energy = 1.15
-    if loudness_i < -16.5:
-        voice_gain = 1.12
+    voice_gain = 1.08
+    music_gain = 0.36
+    sfx_gain = 0.28
+    voice_energy = 1.30
+    if loudness_i < -17.0:
+        voice_gain = 1.18
+        music_gain = 0.32
+        sfx_gain = 0.32
+        voice_energy = 1.40
+    elif loudness_i > -12.5:
+        voice_gain = 0.88
         music_gain = 0.28
-        sfx_gain = 0.28
-    elif loudness_i > -13.0:
-        voice_gain = 0.92
-        music_gain = 0.24
-        sfx_gain = 0.18
+        sfx_gain = 0.20
+        voice_energy = 1.18
 
-    if loudness_lra < 4.5:
-        voice_energy = 1.28
-    elif loudness_lra > 9.0:
-        voice_energy = 1.00
+    if loudness_lra < 4.0:
+        voice_energy = 1.42
+    elif loudness_lra > 10.0:
+        voice_energy = 1.12
 
     render_crf = 20.0
-    if size_mb < 4.2:
+    if size_mb < 4.0:
         render_crf = 18.0
-    elif size_mb > 18:
-        render_crf = 21.0
+    elif size_mb > 20:
+        render_crf = 22.0
 
     return {
         "DOC_MAP_BRIGHTNESS": round(map_brightness, 3),
         "DOC_TEXT_ALPHA_SCALE": round(text_alpha_scale, 3),
         "DOC_ROUTE_GLOW_SCALE": round(route_glow_scale, 3),
-        "DOC_ROUTE_DENSITY_SCALE": round(clamp(route_density_scale, 0.75, 1.80), 3),
-        "DOC_MISSILE_DENSITY_SCALE": round(clamp(missile_density_scale, 0.75, 2.20), 3),
-        "DOC_SHAKE_SCALE": round(clamp(shake_scale, 0.0, 2.10), 3),
-        "DOC_BOMBER_COUNT_SCALE": round(clamp(bomber_count_scale, 0.0, 2.30), 3),
-        "DOC_IMPACT_RING_SCALE": round(clamp(impact_ring_scale, 0.70, 2.10), 3),
-        "DOC_TARGET_CIRCLE_SCALE": round(clamp(target_circle_scale, 0.75, 1.80), 3),
+        "DOC_ROUTE_DENSITY_SCALE": round(clamp(route_density_scale, 0.70, 1.90), 3),
+        "DOC_MISSILE_DENSITY_SCALE": round(clamp(missile_density_scale, 0.70, 2.40), 3),
+        "DOC_SHAKE_SCALE": round(clamp(shake_scale, 0.0, 2.30), 3),
+        "DOC_BOMBER_COUNT_SCALE": round(clamp(bomber_count_scale, 0.0, 2.50), 3),
+        "DOC_IMPACT_RING_SCALE": round(clamp(impact_ring_scale, 0.65, 2.30), 3),
+        "DOC_TARGET_CIRCLE_SCALE": round(clamp(target_circle_scale, 0.70, 1.95), 3),
+        "DOC_GRAIN_ALPHA": int(clamp(grain_alpha, 25, 50)),
         "DOC_VOICE_GAIN": round(voice_gain, 3),
         "DOC_MUSIC_GAIN": round(music_gain, 3),
         "DOC_SFX_GAIN": round(sfx_gain, 3),
