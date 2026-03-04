@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import random
+from dataclasses import replace
 from datetime import date
 from typing import Callable, Iterable, Sequence
 
@@ -19,6 +20,12 @@ INTERNET_HOOKS: Sequence[str] = (
     "Internet favorite puzzle, short version.",
     "This one fooled thousands online.",
     "Classic viral brain teaser. Try now.",
+)
+
+INTELLIGENCE_HOOKS: Sequence[str] = (
+    "Intelligence round: focus on logic, not speed.",
+    "Advanced IQ puzzle. One clean pattern unlocks it.",
+    "Edge challenge: only careful thinkers solve this fast.",
 )
 
 
@@ -52,15 +59,14 @@ def _build_generated_puzzle(seed: int, run_date: str, index: int) -> Puzzle:
 
     narration = " ".join(
         [
-            "Alright, quick puzzle round.",
-            "Use the three clues carefully.",
+            "Welcome back. Quick logic warm-up.",
             equations[0].text.replace("x", "times") + ".",
             equations[1].text.replace("x", "times") + ".",
             equations[2].text.replace("x", "times") + ".",
-            "Now pause and solve the final line.",
+            "Now solve the final expression.",
             question.replace("x", "times") + ".",
             f"Correct answer is {answer}.",
-            "The trick is the flower with one missing petal.",
+            "The trap is the flower with one missing petal.",
         ]
     )
 
@@ -98,7 +104,7 @@ def _build_internet_bat_ball(run_date: str, index: int) -> Puzzle:
     answer = 5
     explanation = [
         "Let ball = x and bat = x + 1.00",
-        "x + (x + 1.00) = 1.10 -> 2x = 0.10",
+        "x + (x + 1.00) = 1.10 so 2x = 0.10",
         "x = 0.05 dollars, so ball = 5 cents",
     ]
 
@@ -112,7 +118,6 @@ def _build_internet_bat_ball(run_date: str, index: int) -> Puzzle:
             "Pause now and guess the ball price.",
             "Most people say ten cents, but that is incorrect.",
             "Correct answer is five cents.",
-            "Because two times ball plus one dollar equals one point one zero.",
         ]
     )
 
@@ -143,7 +148,7 @@ def _build_internet_heads_legs(run_date: str, index: int) -> Puzzle:
     answer = 12
     explanation = [
         "Let C be chickens and R be rabbits",
-        "C + R = 35 and C + 2R = 47 after dividing legs by 2",
+        "C + R = 35 and C + 2R = 47",
         "Subtract equations: R = 12, then C = 23",
     ]
 
@@ -157,7 +162,6 @@ def _build_internet_heads_legs(run_date: str, index: int) -> Puzzle:
             "How many rabbits are there?",
             "Pause and solve.",
             "Correct answer is twelve rabbits.",
-            "Then chickens become twenty three.",
         ]
     )
 
@@ -181,6 +185,93 @@ def _build_internet_heads_legs(run_date: str, index: int) -> Puzzle:
     )
 
 
+def _build_intelligence_sequence(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "sequence", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="2, 6, 12, 20, 30, ?"),
+        PuzzleEquation(text="Differences are +4, +6, +8, +10"),
+        PuzzleEquation(text="Next difference should be +12"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Pattern Sequence IQ",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Number_sequence",
+        source_note="Inspired by classic number pattern intelligence tests",
+        symbols={},
+        equations=equations,
+        question="What is the missing number?",
+        answer=42,
+        explanation=[
+            "Each step adds the next even number in sequence",
+            "+4, +6, +8, +10 then +12",
+            "30 + 12 = 42",
+        ],
+        narration="Find the sequence rule. Two, six, twelve, twenty, thirty, question mark. The jumps are plus four, plus six, plus eight, plus ten. Next jump is plus twelve. Final answer is forty two.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_age(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "age-ratio", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Father is 3 times son's age"),
+        PuzzleEquation(text="After 12 years father is 2 times son"),
+        PuzzleEquation(text="Find son's current age"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Age Ratio Logic",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://brilliant.org/wiki/age-problems/",
+        source_note="Inspired by age-ratio algebra intelligence questions",
+        symbols={},
+        equations=equations,
+        question="Son age right now = ?",
+        answer=12,
+        explanation=[
+            "Let son = x and father = 3x",
+            "After 12 years: 3x + 12 = 2(x + 12)",
+            "x = 12",
+        ],
+        narration="Logic age puzzle. Father is three times the son's age. After twelve years, father becomes two times the son. Solve for son's present age. The answer is twelve.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_digit(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "digit-logic", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="A 3-digit number has digit sum 12"),
+        PuzzleEquation(text="Hundreds digit = 2 times tens digit"),
+        PuzzleEquation(text="Ones digit = hundreds digit - 3"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Digit Constraint Puzzle",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://www.math-only-math.com/problems-on-numbers.html",
+        source_note="Inspired by digit-constraint intelligence questions",
+        symbols={},
+        equations=equations,
+        question="What is the number?",
+        answer=633,
+        explanation=[
+            "Let tens digit be t, then hundreds = 2t and ones = 2t - 3",
+            "Sum: 2t + t + (2t - 3) = 12 => 5t = 15 => t = 3",
+            "Number is 633",
+        ],
+        narration="Digit intelligence puzzle. The sum of digits is twelve. Hundreds digit is twice the tens digit. Ones digit is three less than the hundreds digit. Correct number is six hundred thirty three.",
+        signature=sig,
+    )
+
+
 def _build_internet_puzzle(run_date: str, index: int) -> Puzzle:
     templates: Sequence[Callable[[str, int], Puzzle]] = (
         _build_internet_bat_ball,
@@ -188,6 +279,25 @@ def _build_internet_puzzle(run_date: str, index: int) -> Puzzle:
     )
     builder = templates[(index - 1) % len(templates)]
     return builder(run_date, index)
+
+
+def _build_intelligence_puzzle(run_date: str, index: int) -> Puzzle:
+    templates: Sequence[Callable[[str, int], Puzzle]] = (
+        _build_intelligence_sequence,
+        _build_intelligence_age,
+        _build_intelligence_digit,
+    )
+    builder = templates[(index - 1) % len(templates)]
+    return builder(run_date, index)
+
+
+def _with_salted_signature(puzzle: Puzzle, date_key: str, index: int) -> Puzzle:
+    salted_sig = stable_hash([puzzle.signature, date_key, str(index), "salt"])
+    return replace(
+        puzzle,
+        puzzle_id=f"{date_key.replace('-', '')}_{index:02d}_{salted_sig[:8]}",
+        signature=salted_sig,
+    )
 
 
 def generate_unique_puzzle(
@@ -202,23 +312,13 @@ def generate_unique_puzzle(
     if mode == "internet":
         puzzle = _build_internet_puzzle(run_date=date_key, index=index)
         if puzzle.signature in existing:
-            # Keep internet template style but avoid signature collision in history.
-            salted_sig = stable_hash([puzzle.signature, date_key, str(index), "salt"])
-            puzzle = Puzzle(
-                puzzle_id=f"{date_key.replace('-', '')}_{index:02d}_{salted_sig[:8]}",
-                title=puzzle.title,
-                hook=puzzle.hook,
-                category=puzzle.category,
-                source_url=puzzle.source_url,
-                source_note=puzzle.source_note,
-                symbols=puzzle.symbols,
-                equations=puzzle.equations,
-                question=puzzle.question,
-                answer=puzzle.answer,
-                explanation=puzzle.explanation,
-                narration=puzzle.narration,
-                signature=salted_sig,
-            )
+            puzzle = _with_salted_signature(puzzle=puzzle, date_key=date_key, index=index)
+        return puzzle
+
+    if mode == "intelligence":
+        puzzle = _build_intelligence_puzzle(run_date=date_key, index=index)
+        if puzzle.signature in existing:
+            puzzle = _with_salted_signature(puzzle=puzzle, date_key=date_key, index=index)
         return puzzle
 
     for attempt in range(500):

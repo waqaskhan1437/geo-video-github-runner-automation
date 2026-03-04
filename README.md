@@ -12,6 +12,8 @@ This repository is rebuilt from scratch for a CPU-first, self-hosted, command-li
 6. Optionally adds local realistic voice-over with Piper TTS.
 7. Runs locally or through GitHub Actions schedule.
 8. Supports `generated` mode and `internet` mode puzzle templates.
+9. Includes `intelligence` mode for advanced IQ-style logic questions.
+10. Uses an advanced edge visual theme (modern cards, neon accents, progress timer).
 
 ## Free tool plan used in this codebase
 
@@ -71,6 +73,12 @@ The creator pack is designed to improve workflow using installed skills:
 
 ```bash
 python run.py batch --date 2026-03-04 --count 2 --mode internet --engine pillow
+```
+
+## Intelligence mode (2 videos)
+
+```bash
+python run.py batch --date 2026-03-04 --count 2 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
 ```
 
 ## Voice-over run (Piper local TTS)

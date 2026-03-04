@@ -2,7 +2,6 @@
 
 import math
 from pathlib import Path
-from typing import Sequence
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -10,8 +9,24 @@ from .models import PipelineConfig, Puzzle
 from .utils import ensure_dir
 
 
+COLORS = {
+    "bg_top": (7, 14, 28),
+    "bg_bottom": (16, 38, 58),
+    "grid": (27, 60, 88),
+    "panel": (14, 24, 40),
+    "panel_alt": (19, 33, 54),
+    "panel_border": (63, 138, 176),
+    "accent_cyan": (58, 215, 224),
+    "accent_orange": (255, 174, 76),
+    "text_primary": (234, 246, 255),
+    "text_muted": (170, 205, 224),
+    "chip_bg": (32, 55, 79),
+    "chip_text": (194, 236, 255),
+}
+
+
 def _load_font(size: int) -> ImageFont.ImageFont:
-    for font_name in ("arial.ttf", "DejaVuSans.ttf"):
+    for font_name in ("Bahnschrift.ttf", "segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"):
         try:
             return ImageFont.truetype(font_name, size=size)
         except OSError:
@@ -79,7 +94,7 @@ def _fit_text_block(
     max_width: int,
     max_height: int,
     max_font_size: int,
-    min_font_size: int = 20,
+    min_font_size: int = 18,
     line_spacing: int = 8,
 ) -> tuple[ImageFont.ImageFont, list[str], int, int]:
     for size in range(max_font_size, min_font_size - 1, -2):
@@ -102,10 +117,11 @@ def _draw_wrapped_block(
     text: str,
     box: tuple[int, int, int, int],
     max_font_size: int,
-    min_font_size: int = 20,
+    min_font_size: int = 18,
     line_spacing: int = 8,
     align: str = "left",
     valign: str = "top",
+    fill: tuple[int, int, int] = COLORS["text_primary"],
 ) -> int:
     x1, y1, x2, y2 = box
     max_width = max(40, x2 - x1)
@@ -135,288 +151,288 @@ def _draw_wrapped_block(
         else:
             x = x1
 
-        draw.text((x, y), line, font=font, fill="black")
+        draw.text((x, y), line, font=font, fill=fill)
         y += line_h + line_spacing
 
     return y
 
 
-def _draw_flower(draw: ImageDraw.ImageDraw, x: int, y: int, size: int, missing_petal: bool = False) -> None:
-    cx = x + size // 2
-    cy = y + size // 2
-    petal_radius = max(4, size // 7)
-    ring = size // 3
-
-    petal_positions = []
-    for step in range(8):
-        angle = (math.pi * 2 / 8) * step
-        px = int(cx + math.cos(angle) * ring)
-        py = int(cy + math.sin(angle) * ring)
-        petal_positions.append((px, py))
-
-    if missing_petal:
-        petal_positions = petal_positions[:-1]
-
-    for px, py in petal_positions:
-        draw.ellipse((px - petal_radius, py - petal_radius, px + petal_radius, py + petal_radius), outline="black", width=3, fill="white")
-
-    center_radius = max(5, size // 6)
-    draw.ellipse((cx - center_radius, cy - center_radius, cx + center_radius, cy + center_radius), outline="black", width=3, fill="#F5D76E")
+def _draw_vertical_gradient(image: Image.Image, top_rgb: tuple[int, int, int], bottom_rgb: tuple[int, int, int]) -> None:
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+    for y in range(height):
+        ratio = y / max(1, (height - 1))
+        color = (
+            int(top_rgb[0] + (bottom_rgb[0] - top_rgb[0]) * ratio),
+            int(top_rgb[1] + (bottom_rgb[1] - top_rgb[1]) * ratio),
+            int(top_rgb[2] + (bottom_rgb[2] - top_rgb[2]) * ratio),
+        )
+        draw.line((0, y, width, y), fill=color)
 
 
-def _draw_cat(draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-    cx = x + size // 2
-    cy = y + size // 2
-    radius = size // 3
+def _build_base_canvas(width: int, height: int) -> Image.Image:
+    base = Image.new("RGB", (width, height), COLORS["bg_top"])
+    _draw_vertical_gradient(base, COLORS["bg_top"], COLORS["bg_bottom"])
 
-    draw.polygon([(cx - radius, cy - radius // 2), (cx - radius // 2, y + size // 8), (cx - radius // 8, cy - radius)], outline="black", width=3, fill="white")
-    draw.polygon([(cx + radius, cy - radius // 2), (cx + radius // 2, y + size // 8), (cx + radius // 8, cy - radius)], outline="black", width=3, fill="white")
-    draw.ellipse((cx - radius, cy - radius // 2, cx + radius, cy + radius + radius // 2), outline="black", width=3, fill="white")
+    draw = ImageDraw.Draw(base)
 
-    eye_r = max(2, size // 18)
-    for eye_x in (cx - size // 8, cx + size // 8):
-        draw.ellipse((eye_x - eye_r, cy - eye_r, eye_x + eye_r, cy + eye_r), fill="black")
+    for y in range(0, height, 72):
+        draw.line((0, y, width, y), fill=COLORS["grid"], width=1)
+    for x in range(0, width, 90):
+        draw.line((x, 0, x, height), fill=COLORS["grid"], width=1)
 
-    draw.line((cx - size // 10, cy + size // 8, cx + size // 10, cy + size // 8), fill="black", width=3)
+    draw.arc((width - 360, -110, width + 60, 300), start=195, end=25, fill=COLORS["accent_cyan"], width=3)
+    draw.arc((-140, height - 350, 260, height + 80), start=25, end=220, fill=COLORS["accent_orange"], width=3)
 
-
-def _draw_rabbit(draw: ImageDraw.ImageDraw, x: int, y: int, size: int) -> None:
-    cx = x + size // 2
-    cy = y + size // 2 + size // 10
-    head_r = size // 3
-
-    draw.ellipse((cx - head_r // 2, y, cx - head_r // 8, y + head_r), outline="black", width=3, fill="white")
-    draw.ellipse((cx + head_r // 8, y, cx + head_r // 2, y + head_r), outline="black", width=3, fill="white")
-    draw.ellipse((cx - head_r, cy - head_r, cx + head_r, cy + head_r), outline="black", width=3, fill="white")
-
-    eye_r = max(2, size // 20)
-    for eye_x in (cx - size // 8, cx + size // 8):
-        draw.ellipse((eye_x - eye_r, cy - eye_r, eye_x + eye_r, cy + eye_r), fill="black")
-
-    draw.ellipse((cx - 4, cy + size // 12, cx + 4, cy + size // 12 + 8), fill="black")
+    return base
 
 
-def _draw_symbol(draw: ImageDraw.ImageDraw, token: str, x: int, y: int, size: int) -> int:
-    if token == "F":
-        _draw_flower(draw, x, y, size, missing_petal=False)
-    elif token == "F*":
-        _draw_flower(draw, x, y, size, missing_petal=True)
-    elif token == "C":
-        _draw_cat(draw, x, y, size)
-    elif token == "R":
-        _draw_rabbit(draw, x, y, size)
-    else:
-        return x
-
-    return x + size + 12
-
-
-def _draw_equation_line(
+def _draw_panel(
     draw: ImageDraw.ImageDraw,
-    text: str,
-    x: int,
-    y: int,
-    icon_size: int,
-    font: ImageFont.ImageFont,
-    max_width: int,
-) -> int:
-    cursor_x = x
-    cursor_y = y
-    line_h = max(icon_size + 8, _text_size(draw, "Ag", font)[1] + 16)
-    max_x = x + max_width
-
-    for token in text.split():
-        if token in {"F", "F*", "C", "R"}:
-            token_w = icon_size + 12
-            token_h = icon_size
-        else:
-            token_w = _text_size(draw, token, font)[0] + 16
-            token_h = _text_size(draw, token, font)[1]
-
-        if cursor_x + token_w > max_x and cursor_x > x:
-            cursor_x = x
-            cursor_y += line_h
-
-        if token in {"F", "F*", "C", "R"}:
-            _draw_symbol(draw, token, cursor_x, cursor_y, icon_size)
-        else:
-            token_y = cursor_y + max(0, (line_h - token_h) // 2)
-            draw.text((cursor_x, token_y), token, font=font, fill="black")
-
-        cursor_x += token_w
-
-    return cursor_y + line_h + 10
+    box: tuple[int, int, int, int],
+    fill: tuple[int, int, int],
+    outline: tuple[int, int, int],
+    radius: int = 26,
+    border: int = 3,
+) -> None:
+    x1, y1, x2, y2 = box
+    draw.rounded_rectangle((x1 + 3, y1 + 5, x2 + 3, y2 + 5), radius=radius, fill=(5, 10, 18), outline=None)
+    draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=border)
 
 
-def _draw_whiteboard_base(draw: ImageDraw.ImageDraw, width: int, height: int) -> None:
-    margin = 28
-    draw.rectangle((margin, margin, width - margin, height - margin), outline="black", width=4, fill="#FCFCFC")
+def _draw_chip(draw: ImageDraw.ImageDraw, text: str, x: int, y: int) -> None:
+    font = _load_font(24)
+    tw, th = _text_size(draw, text, font)
+    pad_x = 16
+    pad_y = 8
+    box = (x, y, x + tw + (pad_x * 2), y + th + (pad_y * 2))
+    draw.rounded_rectangle(box, radius=16, fill=COLORS["chip_bg"], outline=COLORS["panel_border"], width=2)
+    draw.text((x + pad_x, y + pad_y), text, font=font, fill=COLORS["chip_text"])
 
-    grid_top = margin + 72
-    grid_bottom = height - margin - 24
-    spacing = 92
-    y = grid_top
-    while y <= grid_bottom:
-        draw.line((margin + 18, y, width - margin - 18, y), fill="#E9E9E9", width=2)
-        y += spacing
+
+def _draw_category_badge(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int) -> None:
+    label = f"{puzzle.category.upper()} MODE"
+    _draw_chip(draw, label, width - 260, 56)
+
+
+def _draw_dynamic_accents(draw: ImageDraw.ImageDraw, width: int, height: int, t: float) -> None:
+    pulse = int(18 * math.sin(t * 1.8))
+    x_shift = int(22 * math.cos(t * 1.3))
+
+    draw.arc((width - 330 + x_shift, 82 + pulse, width - 40 + x_shift, 334 + pulse), start=200, end=22, fill=COLORS["accent_cyan"], width=4)
+    draw.arc((28 - x_shift, height - 334 - pulse, 330 - x_shift, height - 40 - pulse), start=25, end=225, fill=COLORS["accent_orange"], width=4)
 
 
 def _draw_scene_hook(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    _draw_category_badge(draw, puzzle, width)
+
+    hero_box = (40, 140, width - 40, 500)
+    _draw_panel(draw, hero_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=34)
+
     _draw_wrapped_block(
         draw,
         puzzle.title,
-        box=(56, 92, width - 56, 238),
-        max_font_size=62,
+        box=(74, 188, width - 74, 310),
+        max_font_size=64,
         min_font_size=30,
-        line_spacing=6,
         align="center",
         valign="center",
+        fill=COLORS["text_primary"],
     )
 
     _draw_wrapped_block(
         draw,
         puzzle.hook,
-        box=(56, 250, width - 56, 410),
-        max_font_size=42,
-        min_font_size=24,
-        line_spacing=8,
+        box=(74, 322, width - 74, 470),
+        max_font_size=40,
+        min_font_size=22,
         align="center",
         valign="center",
+        fill=COLORS["text_muted"],
     )
 
-    pulse = 1.0 + (math.sin(t * 4) * 0.03)
-    size = int(min(width, height) * 0.18 * pulse)
-    size = max(72, min(140, size))
+    pulse = 1.0 + (math.sin(t * 4.0) * 0.06)
+    orb_r = int(68 * pulse)
+    cx = width // 2
+    cy = min(height - 220, 700)
+    draw.ellipse((cx - orb_r, cy - orb_r, cx + orb_r, cy + orb_r), fill=COLORS["chip_bg"], outline=COLORS["accent_cyan"], width=5)
+    draw.text((cx - 18, cy - 28), "IQ", font=_load_font(46), fill=COLORS["accent_orange"])
 
-    x = (width // 2) - (size // 2)
-    y = min(height - size - 180, 430)
-    _draw_flower(draw, x, y, size, missing_petal=False)
 
-
-def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
-    _draw_wrapped_block(
-        draw,
-        "Solve before timer ends",
-        box=(60, 86, width - 270, 170),
-        max_font_size=44,
-        min_font_size=24,
-        align="left",
-        valign="center",
-    )
-
+def _draw_timer(draw: ImageDraw.ImageDraw, width: int, t: float) -> None:
     elapsed = max(0.0, t - 3.0)
     timer_left = max(0, 10 - int(elapsed))
+    progress = min(1.0, max(0.0, elapsed / 10.0))
+
     _draw_wrapped_block(
         draw,
-        f"Timer: {timer_left}s",
-        box=(width - 230, 86, width - 62, 170),
-        max_font_size=40,
+        f"{timer_left}s",
+        box=(width - 178, 118, width - 66, 158),
+        max_font_size=36,
         min_font_size=22,
         align="right",
         valign="center",
     )
 
-    eq_font = _load_font(36)
-    cursor_y = 220
-    max_width = width - 130
+    bar_box = (60, 172, width - 60, 190)
+    draw.rounded_rectangle(bar_box, radius=9, fill=(34, 51, 72), outline=COLORS["panel_border"], width=2)
+    fill_w = int((bar_box[2] - bar_box[0]) * progress)
+    if fill_w > 0:
+        draw.rounded_rectangle((bar_box[0], bar_box[1], bar_box[0] + fill_w, bar_box[3]), radius=9, fill=COLORS["accent_cyan"], outline=None)
 
-    for line in puzzle.equations:
-        cursor_y = _draw_equation_line(
-            draw=draw,
-            text=line.text,
-            x=66,
-            y=cursor_y,
-            icon_size=62,
-            font=eq_font,
-            max_width=max_width,
+
+def _draw_equation_items(draw: ImageDraw.ImageDraw, texts: list[str], box: tuple[int, int, int, int]) -> None:
+    x1, y1, x2, y2 = box
+    item_count = max(1, len(texts))
+    gap = 12
+    inner_h = y2 - y1
+    row_h = max(68, (inner_h - (gap * (item_count - 1))) // item_count)
+
+    for idx, text in enumerate(texts):
+        row_top = y1 + idx * (row_h + gap)
+        row_bottom = min(y2, row_top + row_h)
+        row_box = (x1, row_top, x2, row_bottom)
+        _draw_panel(draw, row_box, fill=COLORS["panel_alt"], outline=(52, 99, 136), radius=20, border=2)
+
+        badge = (x1 + 14, row_top + 14, x1 + 52, row_top + 52)
+        draw.ellipse(badge, fill=COLORS["chip_bg"], outline=COLORS["accent_orange"], width=2)
+        draw.text((x1 + 28, row_top + 22), str(idx + 1), fill=COLORS["accent_orange"], font=_load_font(20))
+
+        _draw_wrapped_block(
+            draw,
+            text,
+            box=(x1 + 66, row_top + 12, x2 - 14, row_bottom - 12),
+            max_font_size=38,
+            min_font_size=19,
+            line_spacing=6,
+            align="left",
+            valign="center",
         )
-        cursor_y += 8
 
-    cursor_y = _draw_equation_line(
-        draw=draw,
-        text=f"Final: {puzzle.question}",
-        x=66,
-        y=cursor_y + 8,
-        icon_size=62,
-        font=_load_font(38),
-        max_width=max_width,
-    )
 
-    footer_top = min(height - 170, cursor_y + 20)
+def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    _draw_category_badge(draw, puzzle, width)
+
+    top_box = (40, 90, width - 40, 208)
+    _draw_panel(draw, top_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=26)
+
     _draw_wrapped_block(
         draw,
-        "Pause, solve, then drop your answer in comments.",
-        box=(60, footer_top, width - 60, height - 52),
+        "Solve before timer ends",
+        box=(62, 114, width - 230, 154),
+        max_font_size=42,
+        min_font_size=22,
+        valign="center",
+    )
+    _draw_timer(draw, width, t)
+
+    puzzle_box = (40, 228, width - 40, height - 282)
+    _draw_panel(draw, puzzle_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=30)
+
+    lines = [eq.text for eq in puzzle.equations]
+    lines.append(f"Final: {puzzle.question}")
+    _draw_equation_items(draw, lines, box=(58, 258, width - 58, height - 314))
+
+    foot_box = (40, height - 246, width - 40, height - 64)
+    _draw_panel(draw, foot_box, fill=COLORS["panel"], outline=(72, 126, 162), radius=24)
+    _draw_wrapped_block(
+        draw,
+        "Pause now. Solve first, then comment your answer.",
+        box=(62, height - 222, width - 62, height - 88),
         max_font_size=34,
         min_font_size=20,
         align="left",
         valign="center",
+        fill=COLORS["text_muted"],
     )
 
 
 def _draw_scene_solution(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int) -> None:
+    _draw_category_badge(draw, puzzle, width)
+
+    answer_box = (40, 110, width - 40, 250)
+    _draw_panel(draw, answer_box, fill=COLORS["panel"], outline=COLORS["accent_orange"], radius=28)
     _draw_wrapped_block(
         draw,
         f"Answer: {puzzle.answer}",
-        box=(60, 92, width - 60, 220),
-        max_font_size=62,
+        box=(62, 142, width - 62, 222),
+        max_font_size=66,
         min_font_size=30,
         align="left",
         valign="center",
+        fill=COLORS["accent_orange"],
     )
 
-    y = 252
-    for line in puzzle.explanation:
-        y = _draw_wrapped_block(
-            draw,
-            line,
-            box=(60, y, width - 60, y + 160),
-            max_font_size=40,
-            min_font_size=22,
-            align="left",
-            valign="top",
-        ) + 14
+    explain_box = (40, 278, width - 40, height - 224)
+    _draw_panel(draw, explain_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=28)
+    _draw_equation_items(draw, puzzle.explanation, box=(58, 306, width - 58, height - 250))
+
+    tail_box = (40, height - 194, width - 40, height - 64)
+    _draw_panel(draw, tail_box, fill=COLORS["panel"], outline=(72, 126, 162), radius=24)
+    _draw_wrapped_block(
+        draw,
+        "Fast solve? Next one gets harder.",
+        box=(62, height - 172, width - 62, height - 84),
+        max_font_size=34,
+        min_font_size=20,
+        valign="center",
+        fill=COLORS["text_muted"],
+    )
+
+
+def _draw_scene_cta(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int) -> None:
+    _draw_category_badge(draw, puzzle, width)
+
+    main_box = (40, 170, width - 40, 620)
+    _draw_panel(draw, main_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=32)
 
     _draw_wrapped_block(
         draw,
-        "If you solved this fast, next one will be harder.",
-        box=(60, height - 190, width - 60, height - 58),
-        max_font_size=32,
-        min_font_size=20,
+        "Advanced Brain Teaser Series",
+        box=(62, 210, width - 62, 320),
+        max_font_size=58,
+        min_font_size=28,
         align="left",
         valign="center",
     )
 
-
-def _draw_scene_cta(draw: ImageDraw.ImageDraw, _puzzle: Puzzle, width: int, height: int) -> None:
     _draw_wrapped_block(
         draw,
-        "Want harder puzzle?",
-        box=(60, 180, width - 60, 320),
-        max_font_size=64,
-        min_font_size=30,
-        align="left",
-        valign="center",
-    )
-
-    _draw_wrapped_block(
-        draw,
-        "Follow for daily UK and USA style brain teasers with full solution reveal.",
-        box=(60, 370, width - 60, 620),
-        max_font_size=38,
+        "Follow for daily intelligence puzzles with instant solution reveal and stronger logic rounds.",
+        box=(62, 340, width - 62, 548),
+        max_font_size=36,
         min_font_size=20,
+        line_spacing=7,
         align="left",
         valign="top",
+        fill=COLORS["text_muted"],
     )
 
+    source_text = "Original challenge"
+    if puzzle.source_url:
+        source_text = "Inspired by trusted puzzle sources"
     _draw_wrapped_block(
         draw,
-        "Next video drops tomorrow.",
-        box=(60, height - 220, width - 60, height - 70),
-        max_font_size=40,
-        min_font_size=24,
+        source_text,
+        box=(62, 560, width - 62, 604),
+        max_font_size=26,
+        min_font_size=16,
         align="left",
         valign="center",
+        fill=COLORS["accent_cyan"],
+    )
+
+    cta_box = (40, height - 220, width - 40, height - 70)
+    _draw_panel(draw, cta_box, fill=COLORS["panel"], outline=COLORS["accent_orange"], radius=26)
+    _draw_wrapped_block(
+        draw,
+        "Comment your score and tag a friend for the next round.",
+        box=(62, height - 194, width - 62, height - 90),
+        max_font_size=34,
+        min_font_size=20,
+        align="left",
+        valign="center",
+        fill=COLORS["text_primary"],
     )
 
 
@@ -425,13 +441,14 @@ def render_frames(puzzle: Puzzle, config: PipelineConfig, frames_dir: Path) -> i
 
     total_duration = 28.0
     total_frames = int(total_duration * config.fps)
+    base = _build_base_canvas(config.width, config.height)
 
     for frame_idx in range(total_frames):
         t = frame_idx / config.fps
-        img = Image.new("RGB", (config.width, config.height), "white")
+        img = base.copy()
         draw = ImageDraw.Draw(img)
 
-        _draw_whiteboard_base(draw, config.width, config.height)
+        _draw_dynamic_accents(draw, config.width, config.height, t)
 
         if t < 3.0:
             _draw_scene_hook(draw, puzzle, config.width, config.height, t)

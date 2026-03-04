@@ -24,7 +24,7 @@ This workflow maps your installed skills to concrete automation outputs.
 
 1. Generate videos
 ```bash
-python run.py batch --date 2026-03-04 --count 3 --mode internet --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+python run.py batch --date 2026-03-04 --count 3 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
 ```
 
 2. Build creator pack
