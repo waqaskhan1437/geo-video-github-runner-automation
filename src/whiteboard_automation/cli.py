@@ -7,6 +7,7 @@ from pathlib import Path
 from .creator_pack import generate_creator_pack
 from .models import PipelineConfig
 from .pipeline import run_pipeline
+from .voiceover import available_voice_profiles
 
 
 def _parse_date(value: str) -> date:
@@ -32,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_cmd.add_argument("--with-voice", action="store_true", help="Generate voice-over with Piper")
     run_cmd.add_argument("--piper-model", default="", help="Path to Piper ONNX model")
     run_cmd.add_argument("--piper-exe", default="piper", help="Piper executable path or command")
+    run_cmd.add_argument("--voice-profile", choices=available_voice_profiles(), default="calm", help="Voice tuning profile")
 
     batch_cmd = subparsers.add_parser("batch", help="Generate N daily videos")
     batch_cmd.add_argument("--date", default=date.today().isoformat(), help="Run date in YYYY-MM-DD")
@@ -44,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     batch_cmd.add_argument("--with-voice", action="store_true")
     batch_cmd.add_argument("--piper-model", default="")
     batch_cmd.add_argument("--piper-exe", default="piper")
+    batch_cmd.add_argument("--voice-profile", choices=available_voice_profiles(), default="calm")
 
     pack_cmd = subparsers.add_parser("pack", help="Generate workflow creator pack from runs")
     pack_cmd.add_argument("--date", default=date.today().isoformat(), help="Run date in YYYY-MM-DD")
@@ -79,6 +82,7 @@ def main() -> int:
             with_voice=args.with_voice,
             piper_model=piper_model,
             piper_exe=args.piper_exe,
+            voice_profile=args.voice_profile,
         )
 
         print(f"Run completed: {artifacts.run_id}")
@@ -100,6 +104,7 @@ def main() -> int:
                 with_voice=args.with_voice,
                 piper_model=piper_model,
                 piper_exe=args.piper_exe,
+                voice_profile=args.voice_profile,
             )
             print(f"[{idx}/{args.count}] {artifacts.run_id} -> {artifacts.run_dir}")
 

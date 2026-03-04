@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import random
 from dataclasses import replace
@@ -23,9 +23,9 @@ INTERNET_HOOKS: Sequence[str] = (
 )
 
 INTELLIGENCE_HOOKS: Sequence[str] = (
-    "Intelligence round: focus on logic, not speed.",
-    "Advanced IQ puzzle. One clean pattern unlocks it.",
-    "Edge challenge: only careful thinkers solve this fast.",
+    "IQ round: use logic, not calculation.",
+    "Pattern and reasoning challenge. Stay sharp.",
+    "Think calm, solve clean, reveal in seconds.",
 )
 
 
@@ -185,89 +185,241 @@ def _build_internet_heads_legs(run_date: str, index: int) -> Puzzle:
     )
 
 
-def _build_intelligence_sequence(run_date: str, index: int) -> Puzzle:
-    sig = stable_hash(["intelligence", "sequence", run_date, str(index)])
+def _build_intelligence_arrangement(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "arrangement", run_date, str(index)])
     equations = [
-        PuzzleEquation(text="2, 6, 12, 20, 30, ?"),
-        PuzzleEquation(text="Differences are +4, +6, +8, +10"),
-        PuzzleEquation(text="Next difference should be +12"),
+        PuzzleEquation(text="Seats 1 to 4 are arranged left to right."),
+        PuzzleEquation(text="Cat sits immediately left of Dog."),
+        PuzzleEquation(text="Rabbit sits on seat 4."),
+        PuzzleEquation(text="Fox sits somewhere left of Cat."),
     ]
 
     return Puzzle(
         puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
-        title="Pattern Sequence IQ",
+        title="Animal Seating Logic",
         hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
         category="intelligence",
-        source_url="https://en.wikipedia.org/wiki/Number_sequence",
-        source_note="Inspired by classic number pattern intelligence tests",
+        source_url="https://en.wikipedia.org/wiki/Logic_puzzle",
+        source_note="Inspired by arrangement and seating logic puzzles",
         symbols={},
         equations=equations,
-        question="What is the missing number?",
-        answer=42,
+        question="Dog is on which seat number? (1-4)",
+        answer=3,
         explanation=[
-            "Each step adds the next even number in sequence",
-            "+4, +6, +8, +10 then +12",
-            "30 + 12 = 42",
+            "Rabbit is fixed on seat 4.",
+            "Cat must be immediately left of Dog.",
+            "Fox must stay left of Cat, so order is Fox-1, Cat-2, Dog-3, Rabbit-4.",
         ],
-        narration="Find the sequence rule. Two, six, twelve, twenty, thirty, question mark. The jumps are plus four, plus six, plus eight, plus ten. Next jump is plus twelve. Final answer is forty two.",
+        narration="Arrangement IQ puzzle. Seats are one to four from left to right. Cat sits immediately left of Dog. Rabbit sits on seat four. Fox is somewhere left of Cat. Dog lands on seat three. Correct option is three.",
         signature=sig,
     )
 
 
-def _build_intelligence_age(run_date: str, index: int) -> Puzzle:
-    sig = stable_hash(["intelligence", "age-ratio", run_date, str(index)])
+def _build_intelligence_truth(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "truth-check", run_date, str(index)])
     equations = [
-        PuzzleEquation(text="Father is 3 times son's age"),
-        PuzzleEquation(text="After 12 years father is 2 times son"),
-        PuzzleEquation(text="Find son's current age"),
+        PuzzleEquation(text="Exactly one of A and B is telling the truth."),
+        PuzzleEquation(text="A says: The code is 7."),
+        PuzzleEquation(text="B says: The code is 9."),
+        PuzzleEquation(text="The code is odd and greater than 7."),
     ]
 
     return Puzzle(
         puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
-        title="Age Ratio Logic",
+        title="Truth Check Puzzle",
         hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
         category="intelligence",
-        source_url="https://brilliant.org/wiki/age-problems/",
-        source_note="Inspired by age-ratio algebra intelligence questions",
+        source_url="https://en.wikipedia.org/wiki/Logical_reasoning",
+        source_note="Inspired by truth-testing and constraint logic puzzles",
         symbols={},
         equations=equations,
-        question="Son age right now = ?",
-        answer=12,
+        question="Which option is the code? (1=7, 2=8, 3=9, 4=11)",
+        answer=3,
         explanation=[
-            "Let son = x and father = 3x",
-            "After 12 years: 3x + 12 = 2(x + 12)",
-            "x = 12",
+            "Odd and greater than 7 leaves only 9 or 11.",
+            "A says 7, so A must be false.",
+            "Exactly one truth means B is true, so the code is 9 (option 3).",
         ],
-        narration="Logic age puzzle. Father is three times the son's age. After twelve years, father becomes two times the son. Solve for son's present age. The answer is twelve.",
+        narration="Truth check IQ puzzle. Exactly one of A and B is true. A says the code is seven. B says the code is nine. The code is odd and greater than seven. That removes seven and eight. A is false, B is true, so code is nine. Correct option is three.",
         signature=sig,
     )
 
 
-def _build_intelligence_digit(run_date: str, index: int) -> Puzzle:
-    sig = stable_hash(["intelligence", "digit-logic", run_date, str(index)])
+def _build_intelligence_odd_one(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "odd-one-out", run_date, str(index)])
     equations = [
-        PuzzleEquation(text="A 3-digit number has digit sum 12"),
-        PuzzleEquation(text="Hundreds digit = 2 times tens digit"),
-        PuzzleEquation(text="Ones digit = hundreds digit - 3"),
+        PuzzleEquation(text="Find the odd one out from these four options:"),
+        PuzzleEquation(text="1) Rose"),
+        PuzzleEquation(text="2) Tulip"),
+        PuzzleEquation(text="3) Dolphin"),
+        PuzzleEquation(text="4) Lily"),
     ]
 
     return Puzzle(
         puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
-        title="Digit Constraint Puzzle",
+        title="Odd One Out IQ",
         hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
         category="intelligence",
-        source_url="https://www.math-only-math.com/problems-on-numbers.html",
-        source_note="Inspired by digit-constraint intelligence questions",
+        source_url="https://en.wikipedia.org/wiki/Inductive_reasoning",
+        source_note="Inspired by odd-one-out style intelligence tests",
         symbols={},
         equations=equations,
-        question="What is the number?",
-        answer=633,
+        question="Which option number is different? (1-4)",
+        answer=3,
         explanation=[
-            "Let tens digit be t, then hundreds = 2t and ones = 2t - 3",
-            "Sum: 2t + t + (2t - 3) = 12 => 5t = 15 => t = 3",
-            "Number is 633",
+            "Rose, Tulip, and Lily are flowers.",
+            "Dolphin is an animal, not a flower.",
+            "So the odd one out is option 3.",
         ],
-        narration="Digit intelligence puzzle. The sum of digits is twelve. Hundreds digit is twice the tens digit. Ones digit is three less than the hundreds digit. Correct number is six hundred thirty three.",
+        narration="Odd one out IQ puzzle. Rose, tulip, dolphin, lily. Three are flowers and one is an animal. Dolphin is different. Correct option is three.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_analogy(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "analogy", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Analogy pattern:"),
+        PuzzleEquation(text="Puppy : Dog"),
+        PuzzleEquation(text="Kitten : ?"),
+        PuzzleEquation(text="Options: 1) Cat 2) Goat 3) Deer 4) Horse"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Analogy Puzzle",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Analogical_reasoning",
+        source_note="Inspired by verbal analogy IQ questions",
+        symbols={},
+        equations=equations,
+        question="Best matching option number is? (1-4)",
+        answer=1,
+        explanation=[
+            "Puppy is the young one of a dog.",
+            "Kitten is the young one of a cat.",
+            "So the correct option is 1.",
+        ],
+        narration="Analogy IQ puzzle. Puppy relates to dog. Kitten should relate to cat. So the correct answer is option one.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_syllogism(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "syllogism", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="All tulips are flowers."),
+        PuzzleEquation(text="No flower is metal."),
+        PuzzleEquation(text="Pick the statement that must be true."),
+        PuzzleEquation(text="1) Some metals are tulips 2) No tulip is metal 3) All metals are flowers 4) Some flowers are metal"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Syllogism Logic",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Syllogism",
+        source_note="Inspired by classical syllogism reasoning tasks",
+        symbols={},
+        equations=equations,
+        question="Which option must be true? (1-4)",
+        answer=2,
+        explanation=[
+            "If all tulips are flowers, and no flower is metal, tulips cannot be metal.",
+            "Only option 2 is always true under these rules.",
+            "Therefore answer is option 2.",
+        ],
+        narration="Syllogism puzzle. All tulips are flowers and no flower is metal. That means no tulip can be metal. Correct option is two.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_direction(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "direction", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Start facing North."),
+        PuzzleEquation(text="Turn right, then left, then left."),
+        PuzzleEquation(text="Options: 1) North 2) South 3) East 4) West"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Direction IQ",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Spatial_ability",
+        source_note="Inspired by direction-sense intelligence questions",
+        symbols={},
+        equations=equations,
+        question="Final direction option number? (1-4)",
+        answer=4,
+        explanation=[
+            "North -> right gives East.",
+            "East -> left gives North.",
+            "North -> left gives West, so option 4.",
+        ],
+        narration="Direction puzzle. Start north, turn right, then left, then left again. Final direction becomes west. Correct option is four.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_conditional(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "conditional", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="If Rose box has the key, Lily box is empty."),
+        PuzzleEquation(text="Lily box is not empty."),
+        PuzzleEquation(text="Tulip box is empty."),
+        PuzzleEquation(text="Exactly one box contains the key."),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Conditional Logic",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Conditional_statement",
+        source_note="Inspired by conditional and elimination logic puzzles",
+        symbols={},
+        equations=equations,
+        question="Which box has the key? (1=Rose, 2=Lily, 3=Tulip, 4=None)",
+        answer=2,
+        explanation=[
+            "Rose cannot have key because Lily is not empty.",
+            "Tulip is explicitly empty.",
+            "Only Lily can hold the key, so option 2.",
+        ],
+        narration="Conditional logic puzzle. If rose has the key then lily must be empty. But lily is not empty, and tulip is empty too. So the key must be in lily. Correct option is two.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_rotation(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "rotation-pattern", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Arrow pattern: Up, Right, Down, Left, Up, ?"),
+        PuzzleEquation(text="Each step rotates 90 degrees clockwise."),
+        PuzzleEquation(text="Options: 1) Up 2) Right 3) Down 4) Left"),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="Rotation Pattern IQ",
+        hook=random.Random(int(sig[:12], 16)).choice(INTELLIGENCE_HOOKS),
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Pattern_recognition_(psychology)",
+        source_note="Inspired by non-verbal pattern rotation tests",
+        symbols={},
+        equations=equations,
+        question="Next direction option number? (1-4)",
+        answer=2,
+        explanation=[
+            "The direction rotates clockwise each step.",
+            "After Up comes Right, then Down, then Left, then Up again.",
+            "So the next is Right, option 2.",
+        ],
+        narration="Rotation IQ puzzle. The arrows move in a clockwise cycle: up, right, down, left, and repeat. After up, the next is right. Correct option is two.",
         signature=sig,
     )
 
@@ -283,9 +435,14 @@ def _build_internet_puzzle(run_date: str, index: int) -> Puzzle:
 
 def _build_intelligence_puzzle(run_date: str, index: int) -> Puzzle:
     templates: Sequence[Callable[[str, int], Puzzle]] = (
-        _build_intelligence_sequence,
-        _build_intelligence_age,
-        _build_intelligence_digit,
+        _build_intelligence_arrangement,
+        _build_intelligence_truth,
+        _build_intelligence_odd_one,
+        _build_intelligence_analogy,
+        _build_intelligence_syllogism,
+        _build_intelligence_direction,
+        _build_intelligence_conditional,
+        _build_intelligence_rotation,
     )
     builder = templates[(index - 1) % len(templates)]
     return builder(run_date, index)

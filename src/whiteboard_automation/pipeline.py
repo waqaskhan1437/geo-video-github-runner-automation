@@ -47,6 +47,7 @@ def run_pipeline(
     with_voice: bool = False,
     piper_model: Optional[Path] = None,
     piper_exe: Optional[str] = None,
+    voice_profile: str = "calm",
 ) -> RunArtifacts:
     ensure_dir(config.output_root)
     ensure_dir(config.state_root)
@@ -88,6 +89,7 @@ def run_pipeline(
                 out_wav=artifacts.voice_wav,
                 model_path=piper_model,
                 piper_exe=piper_exe,
+                voice_profile=voice_profile,
             )
             mux_with_voice(video_file=artifacts.silent_video, voice_file=artifacts.voice_wav, out_file=artifacts.final_video)
             final_video = artifacts.final_video
@@ -101,6 +103,7 @@ def run_pipeline(
         "mode": mode,
         "requested_engine": engine,
         "with_voice": with_voice,
+        "voice_profile": voice_profile if with_voice else "",
         "final_video": str(final_video),
         "answer": puzzle.answer,
         "puzzle_id": puzzle.puzzle_id,

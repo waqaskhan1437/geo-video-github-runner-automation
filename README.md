@@ -12,7 +12,7 @@ This repository is rebuilt from scratch for a CPU-first, self-hosted, command-li
 6. Optionally adds local realistic voice-over with Piper TTS.
 7. Runs locally or through GitHub Actions schedule.
 8. Supports `generated` mode and `internet` mode puzzle templates.
-9. Includes `intelligence` mode for advanced IQ-style logic questions.
+9. Includes `intelligence` mode for advanced non-calculation IQ puzzle questions.
 10. Uses an advanced edge visual theme (modern cards, neon accents, progress timer).
 
 ## Free tool plan used in this codebase
@@ -81,6 +81,17 @@ python run.py batch --date 2026-03-04 --count 2 --mode internet --engine pillow
 python run.py batch --date 2026-03-04 --count 2 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
 ```
 
+`intelligence` mode rotates across 8 puzzle types:
+
+1. Arrangement (seating order)
+2. Truth-check constraints
+3. Odd-one-out
+4. Analogy
+5. Syllogism
+6. Direction sense
+7. Conditional elimination
+8. Rotation pattern
+
 ## Voice-over run (Piper local TTS)
 
 ```bash
@@ -89,8 +100,15 @@ python run.py run \
   --mode internet \
   --engine pillow \
   --with-voice \
+  --voice-profile calm \
   --piper-model models/en_US-amy-medium.onnx
 ```
+
+Available voice profiles:
+
+1. `calm` (recommended, softer and less irritating)
+2. `studio` (balanced)
+3. `clear` (slightly more energetic)
 
 ## Scriptimate run (optional)
 
@@ -151,4 +169,5 @@ PowerShell helper:
 2. For best human-like voice quality, use Piper models tuned for your target accent.
 3. Keep puzzle uniqueness high by preserving `state/history.json` between runs.
 4. Internet-sourced puzzle inspirations used in this repo are listed in `docs/internet_question_sources.md`.
-5. Skill-driven workflow usage guide is available at `docs/workflow_with_skills.md`.
+5. IQ puzzle type reference is available at `docs/iq_question_types.md`.
+6. Skill-driven workflow usage guide is available at `docs/workflow_with_skills.md`.

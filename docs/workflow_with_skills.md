@@ -5,7 +5,7 @@ This workflow maps your installed skills to concrete automation outputs.
 ## Skill mapping
 
 1. `speech`
-- Local Piper voice-over in generation (`--with-voice --piper-model ...`).
+- Local Piper voice-over in generation (`--with-voice --voice-profile calm --piper-model ...`).
 - `speech_direction.md` generated for delivery pacing and emphasis.
 
 2. `sora`
@@ -24,7 +24,7 @@ This workflow maps your installed skills to concrete automation outputs.
 
 1. Generate videos
 ```bash
-python run.py batch --date 2026-03-04 --count 3 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+python run.py batch --date 2026-03-04 --count 3 --mode intelligence --engine pillow --with-voice --voice-profile calm --piper-model models/en_US-amy-medium.onnx
 ```
 
 2. Build creator pack

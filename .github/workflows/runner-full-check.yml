@@ -38,8 +38,8 @@ jobs:
       - name: Download Piper model
         run: |
           mkdir -p models
-          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx" -o "models/en_US-amy-medium.onnx"
-          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json" -o "models/en_US-amy-medium.onnx.json"
+          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx" -o "models/en_US-lessac-medium.onnx"
+          curl -L "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json" -o "models/en_US-lessac-medium.onnx.json"
 
       - name: Run pillow engine test
         run: |
@@ -54,12 +54,12 @@ jobs:
       - name: Run voice-over test
         run: |
           RUN_DATE="$(date -u +%F)"
-          python run.py run --date "$RUN_DATE" --index 3 --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+          python run.py run --date "$RUN_DATE" --index 3 --engine pillow --with-voice --voice-profile calm --piper-model models/en_US-lessac-medium.onnx
 
       - name: Run internet mode (2 videos)
         run: |
           RUN_DATE="$(date -u +%F)"
-          python run.py batch --date "$RUN_DATE" --count 2 --mode internet --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+          python run.py batch --date "$RUN_DATE" --count 2 --mode internet --engine pillow --with-voice --voice-profile calm --piper-model models/en_US-lessac-medium.onnx
 
       - name: Build creator pack
         run: |

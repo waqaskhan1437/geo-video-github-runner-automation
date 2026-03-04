@@ -25,8 +25,29 @@ COLORS = {
 }
 
 
-def _load_font(size: int) -> ImageFont.ImageFont:
-    for font_name in ("Bahnschrift.ttf", "segoeui.ttf", "arial.ttf", "DejaVuSans.ttf"):
+BOLD_FONT_FILES = (
+    "segoeuib.ttf",
+    "seguisb.ttf",
+    "arialbd.ttf",
+    "Bahnschrift.ttf",
+    "DejaVuSans-Bold.ttf",
+)
+
+REGULAR_FONT_FILES = (
+    "segoeui.ttf",
+    "arial.ttf",
+    "DejaVuSans.ttf",
+)
+
+
+def _load_font(size: int, bold: bool = True) -> ImageFont.ImageFont:
+    candidates = BOLD_FONT_FILES if bold else REGULAR_FONT_FILES
+    for font_name in candidates:
+        try:
+            return ImageFont.truetype(font_name, size=size)
+        except OSError:
+            continue
+    for font_name in REGULAR_FONT_FILES:
         try:
             return ImageFont.truetype(font_name, size=size)
         except OSError:
