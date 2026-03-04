@@ -185,6 +185,66 @@ def _build_internet_heads_legs(run_date: str, index: int) -> Puzzle:
     )
 
 
+def _build_intelligence_link_maze_one(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "link-maze-one", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Connect same letters: A-A, B-B, C-C."),
+        PuzzleEquation(text="Lines cannot cross or overlap."),
+        PuzzleEquation(text="Center gate can be used by only one pair."),
+        PuzzleEquation(text="Use outside boundary routes only if needed."),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="No Crossing Link Maze I",
+        hook="High IQ path puzzle. Visualize before drawing.",
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Planar_graph",
+        source_note="Inspired by no-crossing path and planar connection puzzles",
+        symbols={},
+        equations=equations,
+        question="Minimum outside routes needed? (0, 1, 2, or 3)",
+        answer=2,
+        explanation=[
+            "C is aligned with the center gate, so reserve gate for C.",
+            "A and B are swapped across sides, so a single outside route is not enough.",
+            "One takes upper outside route and one takes lower outside route, minimum is 2.",
+        ],
+        narration="No crossing link maze. Connect A to A, B to B, and C to C. Lines cannot cross and center gate is single use. Think carefully. Minimum outside routes required are two.",
+        signature=sig,
+    )
+
+
+def _build_intelligence_link_maze_two(run_date: str, index: int) -> Puzzle:
+    sig = stable_hash(["intelligence", "link-maze-two", run_date, str(index)])
+    equations = [
+        PuzzleEquation(text="Connect A-A, B-B, and C-C without crossing."),
+        PuzzleEquation(text="The middle gate allows only one pair."),
+        PuzzleEquation(text="If A or B uses the gate first, dead-end happens."),
+        PuzzleEquation(text="Choose which pair must use center gate first."),
+    ]
+
+    return Puzzle(
+        puzzle_id=f"{run_date.replace('-', '')}_{index:02d}_{sig[:8]}",
+        title="No Crossing Link Maze II",
+        hook="Hard visual reasoning: pick the only safe first move.",
+        category="intelligence",
+        source_url="https://en.wikipedia.org/wiki/Logic_puzzle",
+        source_note="Inspired by route-order and deadlock avoidance puzzles",
+        symbols={},
+        equations=equations,
+        question="Which pair must use the center gate first? (1=A, 2=B, 3=C)",
+        answer=3,
+        explanation=[
+            "A and B are opposite-swapped and need outer detours.",
+            "If either A or B consumes center gate, the remaining layout forces a crossing.",
+            "Only C can safely take center gate first, so answer is option 3.",
+        ],
+        narration="Hard link maze. Three pairs must be connected without crossing. Center gate is one-time safe passage. If A or B takes it first, puzzle locks. Correct first gate pair is C, option three.",
+        signature=sig,
+    )
+
+
 def _build_intelligence_arrangement(run_date: str, index: int) -> Puzzle:
     sig = stable_hash(["intelligence", "arrangement", run_date, str(index)])
     equations = [
@@ -435,6 +495,8 @@ def _build_internet_puzzle(run_date: str, index: int) -> Puzzle:
 
 def _build_intelligence_puzzle(run_date: str, index: int) -> Puzzle:
     templates: Sequence[Callable[[str, int], Puzzle]] = (
+        _build_intelligence_link_maze_one,
+        _build_intelligence_link_maze_two,
         _build_intelligence_arrangement,
         _build_intelligence_truth,
         _build_intelligence_odd_one,

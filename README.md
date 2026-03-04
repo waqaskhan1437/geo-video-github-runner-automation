@@ -84,13 +84,14 @@ python run.py batch --date 2026-03-04 --count 2 --mode intelligence --engine pil
 `intelligence` mode rotates across 8 puzzle types:
 
 1. Arrangement (seating order)
-2. Truth-check constraints
-3. Odd-one-out
-4. Analogy
-5. Syllogism
-6. Direction sense
-7. Conditional elimination
-8. Rotation pattern
+2. No-crossing line maze (visual hard mode)
+3. Truth-check constraints
+4. Odd-one-out
+5. Analogy
+6. Syllogism
+7. Direction sense
+8. Conditional elimination
+9. Rotation pattern
 
 ## Voice-over run (Piper local TTS)
 

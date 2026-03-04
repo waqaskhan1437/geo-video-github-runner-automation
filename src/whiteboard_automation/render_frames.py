@@ -331,7 +331,149 @@ def _draw_equation_items(draw: ImageDraw.ImageDraw, texts: list[str], box: tuple
         )
 
 
+def _draw_equation_items_tight(
+    draw: ImageDraw.ImageDraw,
+    texts: list[str],
+    box: tuple[int, int, int, int],
+    min_row_height: int = 48,
+) -> None:
+    x1, y1, x2, y2 = box
+    item_count = max(1, len(texts))
+    gap = 10
+    inner_h = y2 - y1
+    row_h = max(min_row_height, (inner_h - (gap * (item_count - 1))) // item_count)
+
+    for idx, text in enumerate(texts):
+        row_top = y1 + idx * (row_h + gap)
+        row_bottom = min(y2, row_top + row_h)
+        row_box = (x1, row_top, x2, row_bottom)
+        _draw_panel(draw, row_box, fill=COLORS["panel_alt"], outline=(52, 99, 136), radius=18, border=2)
+
+        badge = (x1 + 12, row_top + 10, x1 + 44, row_top + 42)
+        draw.ellipse(badge, fill=COLORS["chip_bg"], outline=COLORS["accent_orange"], width=2)
+        draw.text((x1 + 23, row_top + 16), str(idx + 1), fill=COLORS["accent_orange"], font=_load_font(16))
+
+        _draw_wrapped_block(
+            draw,
+            text,
+            box=(x1 + 56, row_top + 8, x2 - 12, row_bottom - 8),
+            max_font_size=30,
+            min_font_size=16,
+            line_spacing=4,
+            align="left",
+            valign="center",
+        )
+
+
+def _is_link_maze(puzzle: Puzzle) -> bool:
+    return puzzle.title.startswith("No Crossing Link Maze")
+
+
+def _draw_link_maze_board(
+    draw: ImageDraw.ImageDraw,
+    puzzle: Puzzle,
+    box: tuple[int, int, int, int],
+    show_solution: bool = False,
+) -> None:
+    _draw_panel(draw, box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=28)
+    x1, y1, x2, y2 = box
+
+    board = (x1 + 22, y1 + 20, x2 - 22, y2 - 20)
+    draw.rounded_rectangle(board, radius=18, fill=(10, 20, 34), outline=(66, 124, 156), width=2)
+
+    bx1, by1, bx2, by2 = board
+    left_x = bx1 + 86
+    right_x = bx2 - 86
+    top_y = by1 + 78
+    mid_y = (by1 + by2) // 2
+    bot_y = by2 - 78
+
+    left_labels = ("A", "C", "B")
+    right_labels = ("B", "C", "A")
+    left_pts = [(left_x, top_y), (left_x, mid_y), (left_x, bot_y)]
+    right_pts = [(right_x, top_y), (right_x, mid_y), (right_x, bot_y)]
+
+    mid_x = (left_x + right_x) // 2
+    gate_h = 62
+    gate_top = mid_y - (gate_h // 2)
+    gate_bottom = gate_top + gate_h
+
+    draw.line((mid_x, by1 + 14, mid_x, gate_top), fill=COLORS["text_muted"], width=7)
+    draw.line((mid_x, gate_bottom, mid_x, by2 - 14), fill=COLORS["text_muted"], width=7)
+    draw.rounded_rectangle((mid_x - 16, gate_top, mid_x + 16, gate_bottom), radius=8, outline=COLORS["accent_orange"], width=2, fill=(24, 36, 54))
+    draw.text((mid_x - 24, gate_top - 28), "GATE", fill=COLORS["accent_orange"], font=_load_font(14))
+
+    for idx, (pt, label) in enumerate(zip(left_pts, left_labels)):
+        px, py = pt
+        draw.line((px + 18, py, px + 64, py), fill=COLORS["panel_border"], width=3)
+        draw.ellipse((px - 20, py - 20, px + 20, py + 20), fill=(40, 20, 26), outline=(255, 110, 110), width=3)
+        draw.text((px - 9, py - 14), label, fill=(255, 170, 170), font=_load_font(28))
+
+    for pt, label in zip(right_pts, right_labels):
+        px, py = pt
+        draw.line((px - 64, py, px - 18, py), fill=COLORS["panel_border"], width=3)
+        draw.ellipse((px - 20, py - 20, px + 20, py + 20), fill=(40, 20, 26), outline=(255, 110, 110), width=3)
+        draw.text((px - 9, py - 14), label, fill=(255, 170, 170), font=_load_font(28))
+
+    if show_solution:
+        # C path through center gate.
+        draw.line((left_x + 20, mid_y, mid_x - 18, mid_y), fill=COLORS["accent_cyan"], width=5)
+        draw.line((mid_x + 18, mid_y, right_x - 20, mid_y), fill=COLORS["accent_cyan"], width=5)
+
+        # B top outside route.
+        draw.line((left_x + 20, bot_y, left_x + 20, by2 + 8), fill=COLORS["accent_orange"], width=4)
+        draw.line((left_x + 20, by2 + 8, right_x - 20, by2 + 8), fill=COLORS["accent_orange"], width=4)
+        draw.line((right_x - 20, by2 + 8, right_x - 20, top_y), fill=COLORS["accent_orange"], width=4)
+
+        # A bottom outside route.
+        draw.line((left_x + 20, top_y, left_x + 20, by1 - 8), fill=(190, 146, 255), width=4)
+        draw.line((left_x + 20, by1 - 8, right_x - 20, by1 - 8), fill=(190, 146, 255), width=4)
+        draw.line((right_x - 20, by1 - 8, right_x - 20, bot_y), fill=(190, 146, 255), width=4)
+
+
+def _draw_scene_puzzle_link_maze(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    _draw_category_badge(draw, puzzle, width)
+
+    top_box = (40, 90, width - 40, 208)
+    _draw_panel(draw, top_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=26)
+
+    _draw_wrapped_block(
+        draw,
+        "No crossing path challenge",
+        box=(62, 114, width - 230, 154),
+        max_font_size=40,
+        min_font_size=22,
+        valign="center",
+    )
+    _draw_timer(draw, width, t)
+
+    _draw_link_maze_board(draw, puzzle, box=(40, 228, width - 40, 700), show_solution=False)
+
+    clues = [eq.text for eq in puzzle.equations]
+    clues.append(f"Final: {puzzle.question}")
+    clue_box = (40, 716, width - 40, height - 228)
+    _draw_panel(draw, clue_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=24)
+    _draw_equation_items_tight(draw, clues, box=(58, 742, width - 58, height - 254), min_row_height=48)
+
+    foot_box = (40, height - 210, width - 40, height - 64)
+    _draw_panel(draw, foot_box, fill=COLORS["panel"], outline=(72, 126, 162), radius=24)
+    _draw_wrapped_block(
+        draw,
+        "Mentally draw paths first. One wrong start creates dead-end.",
+        box=(62, height - 186, width - 62, height - 88),
+        max_font_size=30,
+        min_font_size=18,
+        align="left",
+        valign="center",
+        fill=COLORS["text_muted"],
+    )
+
+
 def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int, t: float) -> None:
+    if _is_link_maze(puzzle):
+        _draw_scene_puzzle_link_maze(draw, puzzle, width, height, t)
+        return
+
     _draw_category_badge(draw, puzzle, width)
 
     top_box = (40, 90, width - 40, 208)
@@ -369,6 +511,41 @@ def _draw_scene_puzzle(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, he
 
 
 def _draw_scene_solution(draw: ImageDraw.ImageDraw, puzzle: Puzzle, width: int, height: int) -> None:
+    if _is_link_maze(puzzle):
+        _draw_category_badge(draw, puzzle, width)
+
+        answer_box = (40, 90, width - 40, 220)
+        _draw_panel(draw, answer_box, fill=COLORS["panel"], outline=COLORS["accent_orange"], radius=28)
+        _draw_wrapped_block(
+            draw,
+            f"Answer: {puzzle.answer}",
+            box=(62, 122, width - 62, 196),
+            max_font_size=62,
+            min_font_size=28,
+            align="left",
+            valign="center",
+            fill=COLORS["accent_orange"],
+        )
+
+        _draw_link_maze_board(draw, puzzle, box=(40, 240, width - 40, 760), show_solution=True)
+
+        explain_box = (40, 776, width - 40, height - 194)
+        _draw_panel(draw, explain_box, fill=COLORS["panel"], outline=COLORS["panel_border"], radius=24)
+        _draw_equation_items_tight(draw, puzzle.explanation, box=(58, 804, width - 58, height - 222), min_row_height=58)
+
+        tail_box = (40, height - 170, width - 40, height - 64)
+        _draw_panel(draw, tail_box, fill=COLORS["panel"], outline=(72, 126, 162), radius=24)
+        _draw_wrapped_block(
+            draw,
+            "Hard visual puzzle solved. Next maze will be tougher.",
+            box=(62, height - 148, width - 62, height - 84),
+            max_font_size=30,
+            min_font_size=18,
+            valign="center",
+            fill=COLORS["text_muted"],
+        )
+        return
+
     _draw_category_badge(draw, puzzle, width)
 
     answer_box = (40, 110, width - 40, 250)
