@@ -26,3 +26,4 @@ if ($WithVoice) {
 }
 
 python @cmd
+python run.py pack --date $RunDate

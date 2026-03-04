@@ -4,6 +4,7 @@ import argparse
 from datetime import date, datetime
 from pathlib import Path
 
+from .creator_pack import generate_creator_pack
 from .models import PipelineConfig
 from .pipeline import run_pipeline
 
@@ -43,6 +44,9 @@ def build_parser() -> argparse.ArgumentParser:
     batch_cmd.add_argument("--with-voice", action="store_true")
     batch_cmd.add_argument("--piper-model", default="")
     batch_cmd.add_argument("--piper-exe", default="piper")
+
+    pack_cmd = subparsers.add_parser("pack", help="Generate workflow creator pack from runs")
+    pack_cmd.add_argument("--date", default=date.today().isoformat(), help="Run date in YYYY-MM-DD")
 
     return parser
 
@@ -99,6 +103,13 @@ def main() -> int:
             )
             print(f"[{idx}/{args.count}] {artifacts.run_id} -> {artifacts.run_dir}")
 
+        return 0
+
+    if args.command == "pack":
+        run_date = _parse_date(args.date)
+        output_root = Path(args.output_root)
+        pack_dir = generate_creator_pack(output_root=output_root, run_date=run_date)
+        print(f"Creator pack generated: {pack_dir}")
         return 0
 
     parser.print_help()

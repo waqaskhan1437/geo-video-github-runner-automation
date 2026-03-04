@@ -9,3 +9,4 @@ ENGINE="${4:-pillow}"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python run.py batch --date "$RUN_DATE" --count "$COUNT" --mode "$MODE" --engine "$ENGINE"
+python run.py pack --date "$RUN_DATE"

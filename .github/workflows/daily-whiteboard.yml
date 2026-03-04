@@ -80,6 +80,16 @@ jobs:
 
           python run.py batch --date "$RUN_DATE" --count "$COUNT" --mode "$MODE" --engine "$ENGINE"
 
+      - name: Build creator pack
+        env:
+          INPUT_DATE: ${{ github.event.inputs.run_date }}
+        run: |
+          RUN_DATE="$INPUT_DATE"
+          if [ -z "$RUN_DATE" ]; then
+            RUN_DATE="$(date -u +%F)"
+          fi
+          python run.py pack --date "$RUN_DATE"
+
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:

@@ -54,6 +54,19 @@ python run.py run --date 2026-03-04 --engine pillow
 python run.py batch --date 2026-03-04 --count 3 --engine pillow
 ```
 
+## Creator pack generation
+
+```bash
+python run.py pack --date 2026-03-04
+```
+
+The creator pack is designed to improve workflow using installed skills:
+
+1. `sora` -> auto cinematic prompt file.
+2. `speech` -> voice direction script with pacing cues.
+3. `figma` -> scene storyboard CSV for quick design handoff.
+4. `jupyter-notebook` -> notebook template for daily review/analytics.
+
 ## Internet puzzle mode (2 videos)
 
 ```bash
@@ -88,6 +101,11 @@ If Scriptimate fails or is unavailable, the pipeline falls back to the Pillow re
 5. `output/<run_id>/voice.wav` optional Piper output.
 6. `output/<run_id>/video_final.mp4` final muxed video.
 7. `output/<run_id>/metadata.json` run metadata and warnings.
+8. `output/creator_pack_YYYYMMDD/sora_prompts.md` Sora prompt pack.
+9. `output/creator_pack_YYYYMMDD/speech_direction.md` speech direction pack.
+10. `output/creator_pack_YYYYMMDD/figma_storyboard.csv` storyboard sheet.
+11. `output/creator_pack_YYYYMMDD/workflow_tracker.ipynb` notebook tracker.
+12. `output/creator_pack_YYYYMMDD/pack_manifest.json` pack summary.
 
 ## GitHub Actions
 
@@ -99,6 +117,7 @@ Workflow files:
 1. Scheduled daily run at `03:20 UTC`.
 2. Manual run via `workflow_dispatch` with date/count/mode/engine inputs.
 3. Uploads generated videos as workflow artifacts.
+4. Automatically builds creator pack after video generation.
 
 `runner-full-check.yml` performs a complete CI smoke test on GitHub runner:
 
@@ -107,7 +126,8 @@ Workflow files:
 3. Downloads a free Piper model.
 4. Runs `pillow`, `scriptimate`, and `with-voice` generation tests.
 5. Runs internet mode batch generation for 2 videos.
-6. Verifies `video_final.mp4` includes audio stream.
+6. Builds creator pack assets (`sora/speech/figma/jupyter`).
+7. Verifies `video_final.mp4` includes audio stream.
 
 ## Local helper script
 
@@ -123,3 +143,4 @@ PowerShell helper:
 2. For best human-like voice quality, use Piper models tuned for your target accent.
 3. Keep puzzle uniqueness high by preserving `state/history.json` between runs.
 4. Internet-sourced puzzle inspirations used in this repo are listed in `docs/internet_question_sources.md`.
+5. Skill-driven workflow usage guide is available at `docs/workflow_with_skills.md`.
