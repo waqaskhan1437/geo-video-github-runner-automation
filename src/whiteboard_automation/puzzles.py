@@ -484,16 +484,25 @@ def _build_intelligence_rotation(run_date: str, index: int) -> Puzzle:
     )
 
 
-def _build_internet_puzzle(run_date: str, index: int) -> Puzzle:
+def _build_internet_puzzle(run_date: str, index: int, variant_offset: int = 0) -> Puzzle:
     templates: Sequence[Callable[[str, int], Puzzle]] = (
         _build_internet_bat_ball,
         _build_internet_heads_legs,
     )
-    builder = templates[(index - 1) % len(templates)]
+    builder = templates[((index - 1) + variant_offset) % len(templates)]
     return builder(run_date, index)
 
 
-def _build_intelligence_puzzle(run_date: str, index: int) -> Puzzle:
+def _build_link_maze_puzzle(run_date: str, index: int, variant_offset: int = 0) -> Puzzle:
+    templates: Sequence[Callable[[str, int], Puzzle]] = (
+        _build_intelligence_link_maze_one,
+        _build_intelligence_link_maze_two,
+    )
+    builder = templates[((index - 1) + variant_offset) % len(templates)]
+    return builder(run_date, index)
+
+
+def _build_intelligence_puzzle(run_date: str, index: int, variant_offset: int = 0) -> Puzzle:
     templates: Sequence[Callable[[str, int], Puzzle]] = (
         _build_intelligence_link_maze_one,
         _build_intelligence_link_maze_two,
@@ -506,17 +515,45 @@ def _build_intelligence_puzzle(run_date: str, index: int) -> Puzzle:
         _build_intelligence_conditional,
         _build_intelligence_rotation,
     )
-    builder = templates[(index - 1) % len(templates)]
+    builder = templates[((index - 1) + variant_offset) % len(templates)]
     return builder(run_date, index)
 
 
-def _with_salted_signature(puzzle: Puzzle, date_key: str, index: int) -> Puzzle:
-    salted_sig = stable_hash([puzzle.signature, date_key, str(index), "salt"])
+def _with_salted_signature(puzzle: Puzzle, date_key: str, index: int, salt_index: int) -> Puzzle:
+    salted_sig = stable_hash([puzzle.signature, date_key, str(index), "salt", str(salt_index)])
     return replace(
         puzzle,
         puzzle_id=f"{date_key.replace('-', '')}_{index:02d}_{salted_sig[:8]}",
         signature=salted_sig,
     )
+
+
+def _next_unique_from_templates(
+    *,
+    existing: set[str],
+    template_count: int,
+    date_key: str,
+    index: int,
+    builder: Callable[[str, int, int], Puzzle],
+) -> Puzzle:
+    for attempt in range(500):
+        puzzle = builder(date_key, index, attempt)
+
+        if attempt < template_count:
+            candidate = puzzle
+        else:
+            # After all base templates are used, keep generating unique IDs.
+            candidate = _with_salted_signature(
+                puzzle=puzzle,
+                date_key=date_key,
+                index=index,
+                salt_index=attempt + 1,
+            )
+
+        if candidate.signature not in existing:
+            return candidate
+
+    raise RuntimeError("Unable to generate a unique puzzle variant after 500 attempts.")
 
 
 def generate_unique_puzzle(
@@ -529,16 +566,31 @@ def generate_unique_puzzle(
     date_key = run_date.isoformat()
 
     if mode == "internet":
-        puzzle = _build_internet_puzzle(run_date=date_key, index=index)
-        if puzzle.signature in existing:
-            puzzle = _with_salted_signature(puzzle=puzzle, date_key=date_key, index=index)
-        return puzzle
+        return _next_unique_from_templates(
+            existing=existing,
+            template_count=2,
+            date_key=date_key,
+            index=index,
+            builder=_build_internet_puzzle,
+        )
+
+    if mode == "linkmaze":
+        return _next_unique_from_templates(
+            existing=existing,
+            template_count=2,
+            date_key=date_key,
+            index=index,
+            builder=_build_link_maze_puzzle,
+        )
 
     if mode == "intelligence":
-        puzzle = _build_intelligence_puzzle(run_date=date_key, index=index)
-        if puzzle.signature in existing:
-            puzzle = _with_salted_signature(puzzle=puzzle, date_key=date_key, index=index)
-        return puzzle
+        return _next_unique_from_templates(
+            existing=existing,
+            template_count=10,
+            date_key=date_key,
+            index=index,
+            builder=_build_intelligence_puzzle,
+        )
 
     for attempt in range(500):
         seed_parts = [date_key, str(index), str(attempt)]

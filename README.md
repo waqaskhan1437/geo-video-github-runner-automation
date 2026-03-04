@@ -14,6 +14,7 @@ This repository is rebuilt from scratch for a CPU-first, self-hosted, command-li
 8. Supports `generated` mode and `internet` mode puzzle templates.
 9. Includes `intelligence` mode for advanced non-calculation IQ puzzle questions.
 10. Uses an advanced edge visual theme (modern cards, neon accents, progress timer).
+11. Repeated runs now auto-rotate puzzle variants and save to new run folders.
 
 ## Free tool plan used in this codebase
 
@@ -79,6 +80,12 @@ python run.py batch --date 2026-03-04 --count 2 --mode internet --engine pillow
 
 ```bash
 python run.py batch --date 2026-03-04 --count 2 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
+```
+
+## Link Maze mode (image-like no-crossing hard puzzles)
+
+```bash
+python run.py batch --date 2026-03-04 --count 2 --mode linkmaze --engine pillow --with-voice --voice-profile calm --piper-model models/en_US-amy-medium.onnx
 ```
 
 `intelligence` mode rotates across 9 puzzle types:

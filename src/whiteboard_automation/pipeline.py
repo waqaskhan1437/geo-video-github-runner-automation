@@ -16,7 +16,13 @@ from .voiceover import VoiceError, synthesize_with_piper
 
 
 def _build_run_artifacts(config: PipelineConfig, run_date: date, index: int) -> RunArtifacts:
-    run_id = f"{config.run_prefix}_{run_date.strftime('%Y%m%d')}_{index:02d}"
+    base_run_id = f"{config.run_prefix}_{run_date.strftime('%Y%m%d')}_{index:02d}"
+    run_id = base_run_id
+    rev = 1
+    while (config.output_root / run_id).exists():
+        run_id = f"{base_run_id}_r{rev:02d}"
+        rev += 1
+
     run_dir = ensure_dir(config.output_root / run_id)
     frames_dir = ensure_dir(run_dir / config.frames_dir_name)
 

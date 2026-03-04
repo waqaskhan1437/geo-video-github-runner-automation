@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import math
+import random
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -382,11 +383,14 @@ def _draw_link_maze_board(
     draw.rounded_rectangle(board, radius=18, fill=(10, 20, 34), outline=(66, 124, 156), width=2)
 
     bx1, by1, bx2, by2 = board
-    left_x = bx1 + 86
-    right_x = bx2 - 86
-    top_y = by1 + 78
-    mid_y = (by1 + by2) // 2
-    bot_y = by2 - 78
+    seed = int(puzzle.signature[:12], 16)
+    rng = random.Random(seed)
+
+    left_x = bx1 + rng.randint(76, 96)
+    right_x = bx2 - rng.randint(76, 96)
+    top_y = by1 + rng.randint(66, 88)
+    mid_y = ((by1 + by2) // 2) + rng.randint(-16, 16)
+    bot_y = by2 - rng.randint(66, 88)
 
     left_labels = ("A", "C", "B")
     right_labels = ("B", "C", "A")
