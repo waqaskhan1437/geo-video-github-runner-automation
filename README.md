@@ -81,7 +81,7 @@ python run.py batch --date 2026-03-04 --count 2 --mode internet --engine pillow
 python run.py batch --date 2026-03-04 --count 2 --mode intelligence --engine pillow --with-voice --piper-model models/en_US-amy-medium.onnx
 ```
 
-`intelligence` mode rotates across 8 puzzle types:
+`intelligence` mode rotates across 9 puzzle types:
 
 1. Arrangement (seating order)
 2. No-crossing line maze (visual hard mode)
